@@ -1,8 +1,8 @@
 "use client";
 
-import { collection, deleteDoc, doc, setDoc, type FirestoreError } from "firebase/firestore";
+import { arrayRemove, arrayUnion, collection, deleteDoc, doc, setDoc, updateDoc, type FirestoreError } from "firebase/firestore";
 import { getFirebase } from "@/lib/firebase/client";
-import type { Recipe, RecipeDoc } from "@/lib/model/recipe";
+import { editableFields, type Recipe, type RecipeDoc } from "@/lib/model/recipe";
 import { watchCollection } from "./watch";
 
 /**
@@ -39,8 +39,23 @@ export function createRecipe(uid: string, recipe: RecipeDoc): string {
   return ref.id;
 }
 
+/** Saves an edit. Only the editor's fields, so ratings and the cooked log are left alone. */
 export function updateRecipe(uid: string, id: string, recipe: RecipeDoc) {
-  setDoc(doc(db(), path(uid), id), recipe).catch(reportFailure("saving your changes"));
+  updateDoc(doc(db(), path(uid), id), editableFields(recipe)).catch(reportFailure("saving your changes"));
+}
+
+/** 1 to 5 stars, or null to clear. */
+export function rateRecipe(uid: string, id: string, rating: number | null) {
+  updateDoc(doc(db(), path(uid), id), { rating }).catch(reportFailure("saving the rating"));
+}
+
+/** Logs a time it was cooked. arrayUnion merges cleanly with taps from another phone. */
+export function logCooked(uid: string, id: string, at: number) {
+  updateDoc(doc(db(), path(uid), id), { cooked: arrayUnion(at) }).catch(reportFailure("logging that you cooked it"));
+}
+
+export function unlogCooked(uid: string, id: string, at: number) {
+  updateDoc(doc(db(), path(uid), id), { cooked: arrayRemove(at) }).catch(reportFailure("undoing that"));
 }
 
 export function deleteRecipe(uid: string, id: string) {

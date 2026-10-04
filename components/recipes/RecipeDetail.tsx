@@ -6,6 +6,7 @@ import { sortedPhotos } from "@/lib/model/photos";
 import RecipePhoto from "./RecipePhoto";
 import PhotoViewer from "./PhotoViewer";
 import { TagLabel } from "./TagPicker";
+import CookedPanel from "./CookedPanel";
 
 /** One recipe, readable while cooking. */
 export default function RecipeDetail({
@@ -15,6 +16,9 @@ export default function RecipeDetail({
   onTag,
   onEdit,
   onDelete,
+  onRate,
+  onCooked,
+  onUndoCooked,
 }: {
   uid: string;
   recipe: Recipe;
@@ -23,6 +27,9 @@ export default function RecipeDetail({
   onTag: (tag: string) => void;
   onEdit: () => void;
   onDelete: () => void;
+  onRate: (rating: number | null) => void;
+  onCooked: (at: number) => void;
+  onUndoCooked: (at: number) => void;
 }) {
   const [confirming, setConfirming] = useState(false);
   const [viewing, setViewing] = useState<string | null>(null);
@@ -100,6 +107,8 @@ export default function RecipeDetail({
           </a>
         )}
       </header>
+
+      <CookedPanel recipe={recipe} onRate={onRate} onCooked={onCooked} onUndoCooked={onUndoCooked} />
 
       {recipe.ingredients.length > 0 && (
         <section>

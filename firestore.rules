@@ -47,6 +47,8 @@ service cloud.firestore {
         && r.notes is string
         && r.notes.size() <= 4000
         && (!('photos' in r) || (r.photos is map && r.photos.size() <= 10))
+        && (!('rating' in r) || r.rating == null || (r.rating is int && r.rating >= 1 && r.rating <= 5))
+        && (!('cooked' in r) || (r.cooked is list && r.cooked.size() <= 200))
         && r.createdAt is number
         && r.updatedAt is number;
     }
