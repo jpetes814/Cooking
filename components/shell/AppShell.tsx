@@ -35,7 +35,12 @@ function SignedIn({ uid, email }: { uid: string; email: string }) {
   const pantry = usePantry(uid);
   const recipes = useRecipes(uid);
 
-  if (pantry.status === "denied" || recipes.status === "denied") return <NotOnList email={email} />;
+  // Pantry has been readable since the sign-in step, so if it loads but
+  // something newer doesn't, the project's rules are behind, not the allowlist.
+  if (pantry.status === "denied") return <NotOnList email={email} reason="notListed" />;
+  if (recipes.status === "denied") {
+    return <NotOnList email={email} reason={pantry.status === "ready" ? "rulesOutdated" : "notListed"} />;
+  }
   const coming = COMING[tab];
 
   return (
