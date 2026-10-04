@@ -9,10 +9,12 @@ A personal recipe library and shopping planner, used mostly on a phone, often in
 - `npm ci`: install
 - `npm run dev`: local dev server at http://localhost:3000 (no service worker in dev)
 - `npm run check`: lint, typecheck, unit tests, build. **Must pass before you open a PR.** The build must pass with no env vars set.
-- `npm run test:e2e`: Playwright on a production build at phone size (Pixel 7). In Claude Code cloud sessions it uses the Chromium at `/opt/pw-browsers/chromium`; never run `playwright install` there.
+- `npm run test:rules`: Firestore security-rules tests against the local emulator. Run after any change to `firestore.rules`.
+- `npm run test:e2e`: Playwright on a production build at phone size (Pixel 7), against local Firebase emulators (auth + Firestore, seeded in `tests/e2e/global-setup.ts`). In Claude Code cloud sessions it uses the Chromium at `/opt/pw-browsers/chromium`; never run `playwright install` there.
 - `node scripts/make-icons.mjs`: regenerate PNG icons after editing `public/icon.svg`
 
-Coming with the sign-in step: `npm run test:rules` (security-rules tests against the Firebase emulator, needs Java 21), `npm run emulators` plus `npm run dev:local` (develop against local Firebase with no real project).
+- `npm run emulators` plus `npm run dev:local` (second terminal): develop against local Firebase with no real project. Create test users with the helpers in `tests/e2e/firebase.ts`.
+- The emulators need Java 21.
 
 ## Stack
 
