@@ -14,7 +14,7 @@ test("serves an installable manifest", async ({ request }) => {
 
 test("switches tabs", async ({ page }) => {
   await signIn(page, TESTER);
-  await expect(page.getByRole("heading", { name: "Your recipes" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: /Your recipes/ })).toBeVisible();
   await page.getByRole("button", { name: "Shop" }).click();
   await expect(page.getByRole("heading", { name: "Shopping trips" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Shop" })).toHaveAttribute("aria-current", "page");

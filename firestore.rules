@@ -31,8 +31,36 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
+    // A saved recipe. The app checks the details (lib/model/recipe.ts); the
+    // rules keep the shape sane and the size bounded.
+    function validRecipe(r) {
+      return r.title is string
+        && r.title.size() > 0
+        && r.title.size() <= 120
+        && r.source is map
+        && r.ingredients is list
+        && r.ingredients.size() <= 100
+        && r.steps is list
+        && r.steps.size() <= 60
+        && r.tags is list
+        && r.tags.size() <= 50
+        && r.notes is string
+        && r.notes.size() <= 4000
+        && r.createdAt is number
+        && r.updatedAt is number;
+    }
+
     match /users/{uid} {
       allow read, write: if owner(uid);
+
+      match /recipes/{recipeId} {
+        allow read, delete: if owner(uid);
+        allow create: if owner(uid) && validRecipe(request.resource.data);
+        // Editing can't rewrite when it was first saved.
+        allow update: if owner(uid)
+          && validRecipe(request.resource.data)
+          && request.resource.data.createdAt == resource.data.createdAt;
+      }
 
       // Staples you always have (salt, olive oil), kept off shopping lists.
       match /pantry/staples {
