@@ -22,10 +22,13 @@ export function TagLabel({ tag }: { tag: string }) {
 export default function TagPicker({
   tags,
   used,
+  suggested = [],
   onChange,
 }: {
   tags: string[];
   used: string[];
+  /** Tags Claude suggested from a link or photo. Only added with a tap. */
+  suggested?: string[];
   onChange: (tags: string[]) => void;
 }) {
   const [draft, setDraft] = useState("");
@@ -74,6 +77,27 @@ export default function TagPicker({
             </li>
           ))}
         </ul>
+      )}
+      {suggested.length > 0 && (
+        <div className="mt-2 rounded-xl border border-dashed border-accent p-2" aria-label="Suggested tags" role="group">
+          <div className="flex items-center justify-between">
+            <p className="text-xs font-semibold text-accent">Claude suggests</p>
+            <button
+              type="button"
+              onClick={() => onChange([...new Set([...tags, ...suggested])].sort())}
+              className="min-h-9 px-2 text-xs font-semibold text-accent"
+            >
+              Add all
+            </button>
+          </div>
+          <div className="mt-1 flex flex-wrap gap-2">
+            {suggested.map((t) => (
+              <button key={t} type="button" onClick={() => add(t)} aria-label={`Add suggested tag ${t}`} className={`${chip} border-border bg-surface`}>
+                + <TagLabel tag={t} />
+              </button>
+            ))}
+          </div>
+        </div>
       )}
       <div className="mt-2 flex gap-2">
         <input

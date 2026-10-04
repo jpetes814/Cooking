@@ -25,12 +25,19 @@ export interface Usage {
 
 export type AiResult<T> = { ok: true; data: T; usage: Usage } | { ok: false; status: number; error: string };
 
+/** A picture for Claude to look at: bytes we already have, or an address it can fetch. */
+export type AiImage =
+  | { kind: "base64"; mediaType: "image/jpeg" | "image/png" | "image/webp" | "image/gif"; data: string }
+  | { kind: "url"; url: string };
+
 export interface StructuredCall<S extends z.ZodType> {
   role: ModelRole;
   effort: Effort;
   /** Stable instructions. Cached, so keep anything that varies per request out of it. */
   system: string;
   prompt: string;
+  /** Photos sent ahead of the prompt, in order. */
+  images?: AiImage[];
   schema: S;
   maxTokens?: number;
 }
@@ -53,7 +60,7 @@ export async function runStructured<S extends z.ZodType>(call: StructuredCall<S>
       model: MODELS[call.role],
       max_tokens: call.maxTokens ?? 16000,
       system: [{ type: "text", text: call.system, cache_control: { type: "ephemeral" } }],
-      messages: [{ role: "user", content: call.prompt }],
+      messages: [{ role: "user", content: userContent(call) }],
       output_config: { effort: call.effort, format: betaZodOutputFormat(call.schema) },
       ...(fallback ? { betas: ["server-side-fallback-2026-07-01"], fallbacks: "default" as const } : {}),
     });
@@ -91,6 +98,20 @@ export async function runStructured<S extends z.ZodType>(call: StructuredCall<S>
     console.error("Claude call failed", err);
     return { ok: false, status: 502, error: "Couldn't reach Claude. Try again in a moment." };
   }
+}
+
+function userContent(call: { prompt: string; images?: AiImage[] }) {
+  if (!call.images?.length) return call.prompt;
+  return [
+    ...call.images.map((img) => ({
+      type: "image" as const,
+      source:
+        img.kind === "base64"
+          ? { type: "base64" as const, media_type: img.mediaType, data: img.data }
+          : { type: "url" as const, url: img.url },
+    })),
+    { type: "text" as const, text: call.prompt },
+  ];
 }
 
 /** Sum usage across several calls. */

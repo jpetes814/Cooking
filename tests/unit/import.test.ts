@@ -29,6 +29,7 @@ describe("recipeFromHtml", () => {
       ingredients: ["1 small pumpkin", "6 sage leaves"],
       steps: ["Roast the pumpkin.", "Blend with stock."],
       notes: "",
+      suggestedTags: [],
     });
   });
 
@@ -107,7 +108,7 @@ describe("youtubeId", () => {
 });
 
 describe("mergeDraft", () => {
-  const draft: ImportDraft = { title: "Soup", servings: 4, ingredients: ["1 onion", "2 cups stock"], steps: ["Simmer"], notes: "" };
+  const draft: ImportDraft = { title: "Soup", servings: 4, ingredients: ["1 onion", "2 cups stock"], steps: ["Simmer"], notes: "", suggestedTags: [] };
   const blank = { title: "", url: "https://x.com/a", servings: "", ingredients: "", steps: "", notes: "" };
 
   it("fills only empty fields and says which", () => {
@@ -131,7 +132,9 @@ describe("tidyExtracted", () => {
       ingredients: ["  1 onion ", "", "2 cups\nstock"],
       steps: Array.from({ length: 70 }, (_, i) => `Step ${i}`),
       notes: "",
+      suggestedTags: ["Dish/Soup", "dish/soup", "season/fall"],
     });
+    expect(out.suggestedTags).toEqual(["dish/soup", "season/fall"]);
     expect(out.title).toBe("Soup");
     expect(out.servings).toBeNull();
     expect(out.ingredients).toEqual(["1 onion", "2 cups stock"]);
@@ -140,7 +143,7 @@ describe("tidyExtracted", () => {
 });
 
 describe("importRecipe", () => {
-  const page: ImportDraft = { title: "Toast", servings: 1, ingredients: ["bread"], steps: ["Toast it"], notes: "" };
+  const page: ImportDraft = { title: "Toast", servings: 1, ingredients: ["bread"], steps: ["Toast it"], notes: "", suggestedTags: [] };
   const calls: string[] = [];
   const sources = (over: Partial<Sources> = {}): Sources => ({
     page: async () => ({ ok: true, recipe: page, text: "" }),

@@ -11,6 +11,17 @@ import { MAX_PHOTOS, sortedPhotos } from "@/lib/model/photos";
 import PhotoPicker, { type NewPhoto } from "./PhotoPicker";
 import TagPicker from "./TagPicker";
 import { normalizeTags } from "@/lib/search/tags";
+import { MAX_PHOTOS_TO_READ } from "@/lib/import/photos";
+
+/** A shrunk photo as base64, for sending to Claude. */
+function toBase64(blob: Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result).split(",")[1] ?? "");
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(blob);
+  });
+}
 
 export interface PhotoEdits {
   add: NewPhoto[];
@@ -52,12 +63,34 @@ export default function RecipeEditor({
   const kept = sortedPhotos(existing?.photos).filter((p) => !removed.includes(p.id));
   const [error, setError] = useState<string | null>(null);
   const [fill, setFill] = useState<FillState>({ status: "idle" });
+  const [read, setRead] = useState<FillState>({ status: "idle" });
+  const [suggested, setSuggested] = useState<string[]>([]);
   const online = useOnline();
   const set = (key: keyof typeof form) => (v: string) => {
     setForm((f) => ({ ...f, [key]: v }));
     setError(null);
     if (key === "url") setFill({ status: "idle" });
   };
+
+  /**
+   * Puts a draft into the empty fields and offers its tags. Merges into the
+   * newest form, so anything typed while it loaded is kept; the message is
+   * worked out from the form as it was when the button was tapped.
+   */
+  function applyDraft(draft: ImportDraft, via: ImportVia, setState: (s: FillState) => void) {
+    if (!hasContent(draft)) {
+      setState({ status: "done", tone: "warn", text: "Couldn't find a recipe there." });
+      return;
+    }
+    setForm((current) => mergeDraft(current, draft).form);
+    setSuggested(draft.suggestedTags.filter((t) => !tags.includes(t)));
+    const merged = mergeDraft(form, draft);
+    setState(
+      merged.filled.length
+        ? { status: "done", tone: "ok", text: FILLED_FROM[via] }
+        : { status: "done", tone: "warn", text: "Everything was already filled in, so nothing changed." }
+    );
+  }
 
   async function fillFromLink() {
     const link = parseLink(form.url);
@@ -66,25 +99,36 @@ export default function RecipeEditor({
       return;
     }
     setFill({ status: "busy" });
-    const res = await callAi<{ draft: ImportDraft; via: ImportVia }>("/api/import", { url: link.url });
+    const res = await callAi<{ draft: ImportDraft; via: ImportVia }>("/api/import", { url: link.url, usedTags });
     if (!res.ok) {
       setFill({ status: "done", tone: "warn", text: res.error });
       return;
     }
-    if (!hasContent(res.data.draft)) {
-      setFill({ status: "done", tone: "warn", text: "Couldn't find a recipe there." });
+    applyDraft(res.data.draft, res.data.via, setFill);
+  }
+
+  /** Sends the recipe's photos to Claude: uploaded ones by address, new ones as the shrunk image. */
+  async function readPhotos() {
+    setRead({ status: "busy" });
+    const urls = kept.map((p) => p.url).filter((u): u is string => Boolean(u)).slice(0, MAX_PHOTOS_TO_READ);
+    const fresh = added.slice(0, MAX_PHOTOS_TO_READ - urls.length);
+    let images: { mediaType: "image/jpeg"; data: string }[];
+    try {
+      images = await Promise.all(fresh.map(async (p) => ({ mediaType: "image/jpeg" as const, data: await toBase64(p.blob) })));
+    } catch {
+      setRead({ status: "done", tone: "warn", text: "Couldn't get those photos ready. Try again." });
       return;
     }
-    // Merge into the newest form, so anything typed while it loaded is kept.
-    // The message is worked out from the form as it was when the button was tapped.
-    const draft = res.data.draft;
-    setForm((current) => mergeDraft(current, draft).form);
-    const merged = mergeDraft(form, draft);
-    setFill(
-      merged.filled.length
-        ? { status: "done", tone: "ok", text: FILLED_FROM[res.data.via] }
-        : { status: "done", tone: "warn", text: "Everything was already filled in, so nothing changed." }
-    );
+    if (!images.length && !urls.length) {
+      setRead({ status: "done", tone: "warn", text: "These photos are still uploading. Try again in a moment." });
+      return;
+    }
+    const res = await callAi<{ draft: ImportDraft; via: ImportVia }>("/api/read-photos", { images, urls, usedTags });
+    if (!res.ok) {
+      setRead({ status: "done", tone: "warn", text: res.error });
+      return;
+    }
+    applyDraft(res.data.draft, res.data.via, setRead);
   }
 
   function save(e: React.FormEvent) {
@@ -136,7 +180,40 @@ export default function RecipeEditor({
           onRemoveExisting={(id) => setRemoved((r) => [...r, id])}
           onRemoveAdded={(id) => setAdded((a) => a.filter((p) => p.id !== id))}
         />
-        <TagPicker tags={tags} used={usedTags} onChange={setTags} />
+        {kept.length + added.length > 0 && (
+          <div>
+            <button
+              type="button"
+              onClick={readPhotos}
+              disabled={!online || read.status === "busy"}
+              className="min-h-11 w-full rounded-xl border border-accent bg-accent-soft font-semibold text-accent disabled:opacity-60"
+            >
+              {!online
+                ? "Reading photos needs signal"
+                : read.status === "busy"
+                  ? "Reading the photos..."
+                  : kept.length + added.length === 1
+                    ? "Read photo with Claude"
+                    : "Read photos with Claude"}
+            </button>
+            {read.status === "done" ? (
+              <p role="status" className={`mt-2 text-sm ${read.tone === "ok" ? "text-ok" : "text-warn"}`}>
+                {read.text}
+              </p>
+            ) : (
+              <p className="mt-1 text-xs text-muted">
+                For a cookbook page, recipe card, or caption screenshot. Fills the empty fields
+                {kept.length + added.length > MAX_PHOTOS_TO_READ ? `, using the first ${MAX_PHOTOS_TO_READ} photos` : ""}.
+              </p>
+            )}
+          </div>
+        )}
+        <TagPicker
+          tags={tags}
+          used={usedTags}
+          suggested={suggested.filter((t) => !tags.includes(t))}
+          onChange={setTags}
+        />
         <TextInput label="Servings" value={form.servings} onChange={set("servings")} inputMode="decimal" placeholder="4" />
         <TextArea
           label="Ingredients"

@@ -114,6 +114,7 @@ export function recipeFromHtml(html: string): ImportDraft | null {
     ingredients,
     steps,
     notes: "",
+    suggestedTags: [],
   };
 }
 

@@ -6,10 +6,14 @@ import { ExtractedRecipeSchema, IMPORT_SYSTEM, importPrompt } from "@/lib/ai/pro
 import { importRecipe, type Extract } from "@/lib/import/run";
 import { liveSources } from "@/lib/import/sources";
 import { MAX_URL } from "@/lib/model/recipe";
+import { MAX_TAG_LENGTH } from "@/lib/search/tags";
 
 export const maxDuration = 60;
 
-const Body = z.object({ url: z.string().min(1).max(MAX_URL) });
+const Body = z.object({
+  url: z.string().min(1).max(MAX_URL),
+  usedTags: z.array(z.string().max(MAX_TAG_LENGTH)).max(100).default([]),
+});
 
 /** Reads a pasted link and returns a recipe draft for the editor. Never saves anything. */
 export async function POST(req: Request) {
@@ -31,7 +35,7 @@ export async function POST(req: Request) {
           role: "reader",
           effort: "low",
           system: IMPORT_SYSTEM,
-          prompt: importPrompt(kind, text),
+          prompt: importPrompt(kind, text, parsed.data.usedTags),
           schema: ExtractedRecipeSchema,
           maxTokens: 8000,
         });
