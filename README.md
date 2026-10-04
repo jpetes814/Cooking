@@ -11,11 +11,12 @@ Being built in small steps, each one a pull request you can test on your phone b
 1. Installable app shell that opens offline, CI, docs
 2. Sign-in and offline data, with security rules
 3. Add, view, and edit recipes (typed in or from a link)
-4. Recipe photos
-5. Tags, sub-tags, and search
-6. Claude reads a recipe photo and suggests tags
-7. Shopping trips: one merged list for several recipes
-8. "Use it up": recipes that share what you're already buying
+4. Fill from link: recipe pages, TikTok and YouTube captions
+5. Recipe photos
+6. Tags, sub-tags, and search
+7. Claude reads a recipe photo and suggests tags
+8. Shopping trips: one merged list for several recipes
+9. "Use it up": recipes that share what you're already buying
 
 ## Docs
 

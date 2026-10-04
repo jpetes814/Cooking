@@ -18,7 +18,7 @@ A personal recipe library and shopping planner, used mostly on a phone, often in
 
 ## Stack
 
-Next.js 16 (App Router), React 19, TypeScript, Tailwind 4 (configured in `app/globals.css`; there is no tailwind.config). Firebase (Auth, Firestore, Storage for photos) for data, Claude API for reading recipe photos and suggesting tags, Vercel for hosting. Next 16 differs from older versions: read `node_modules/next/dist/docs/` before using an API you're unsure of.
+Next.js 16 (App Router), React 19, TypeScript, Tailwind 4 (configured in `app/globals.css`; there is no tailwind.config). Firebase (Auth, Firestore, Storage for photos) for data, Claude API for reading captions, pages, and photos into recipe drafts, Vercel for hosting. Next 16 differs from older versions: read `node_modules/next/dist/docs/` before using an API you're unsure of.
 
 ## Structure
 
@@ -26,6 +26,7 @@ Next.js 16 (App Router), React 19, TypeScript, Tailwind 4 (configured in `app/gl
 - `app/api/`: the only place server secrets are read. Every route checks the signed-in user first (`lib/ai/guard.ts`).
 - `lib/ai/`: every Claude call goes through `lib/ai/claude.ts` (structured output checked by a zod schema). Model IDs live in `lib/ai/models.ts`, prompts in `lib/ai/prompts/`, stand-in answers for tests in `lib/ai/mocks.ts`.
 - `lib/data/`: every Firestore and Storage read and write. Components never call Firebase directly.
+- `lib/import/`: "Fill from link". Recipe pages are read from their schema.org JSON-LD with no AI; captions and plain pages go to Claude. All outside fetches go through `lib/import/sources.ts`, which blocks private addresses (`safe-url.ts`). Tests use the fake sites in `lib/ai/mocks.ts`.
 - `lib/model/`, `lib/search/`, `lib/shop/`: pure logic (recipe validation, ingredient parsing, tag search, merging shopping lists). Keep it pure and unit tested.
 - `public/sw.js`: the service worker. `tests/unit/` (Vitest), `tests/rules/` (security rules), `tests/e2e/` (Playwright).
 
