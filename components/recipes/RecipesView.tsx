@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { createRecipe, deleteRecipe, updateRecipe } from "@/lib/data/recipes";
 import { queueDeletes, queueUploads } from "@/lib/data/photos";
 import { parseLink, SITE_LABEL, type Recipe, type RecipeDoc } from "@/lib/model/recipe";
@@ -8,6 +8,9 @@ import { applyPhotoEdits, coverPhoto, photoPath, sortedPhotos } from "@/lib/mode
 import RecipeDetail from "./RecipeDetail";
 import RecipeEditor, { type PhotoEdits } from "./RecipeEditor";
 import RecipePhoto from "./RecipePhoto";
+import { TagLabel } from "./TagPicker";
+import { filterRecipes } from "@/lib/search/recipes";
+import { currentSeason, tagCounts, tagLeaf } from "@/lib/search/tags";
 
 type Editing = { mode: "new" } | { mode: "edit"; recipe: Recipe } | null;
 
@@ -15,7 +18,18 @@ type Editing = { mode: "new" } | { mode: "edit"; recipe: Recipe } | null;
 export default function RecipesView({ uid, recipes }: { uid: string; recipes: Recipe[] }) {
   const [openId, setOpenId] = useState<string | null>(null);
   const [editing, setEditing] = useState<Editing>(null);
+  const [query, setQuery] = useState("");
+  const [picked, setPicked] = useState<string[]>([]);
   const open = recipes.find((r) => r.id === openId) ?? null;
+
+  const counts = useMemo(() => tagCounts(recipes), [recipes]);
+  const usedTags = useMemo(() => counts.map((c) => c.tag).filter((t) => recipes.some((r) => r.tags.includes(t))), [counts, recipes]);
+  const shown = useMemo(() => filterRecipes(recipes, { query, tags: picked }), [recipes, query, picked]);
+  const filtering = query.trim() !== "" || picked.length > 0;
+  const seasonTag = `season/${currentSeason(new Date())}`;
+  // Filter chips: what's in season first, then your most used tags and groups.
+  const chips = [seasonTag, ...counts.map((c) => c.tag).filter((t) => t !== seasonTag)].slice(0, 16);
+  const toggle = (tag: string) => setPicked((p) => (p.includes(tag) ? p.filter((t) => t !== tag) : [...p, tag]));
 
   /** Saves the recipe, then hands new photos to the upload queue and old ones to the delete queue. */
   function save(doc: RecipeDoc, edits: PhotoEdits) {
@@ -37,6 +51,7 @@ export default function RecipesView({ uid, recipes }: { uid: string; recipes: Re
     <RecipeEditor
       uid={uid}
       existing={editing.mode === "edit" ? editing.recipe : undefined}
+      usedTags={usedTags}
       onClose={() => setEditing(null)}
       onSave={save}
     />
@@ -49,6 +64,11 @@ export default function RecipesView({ uid, recipes }: { uid: string; recipes: Re
           uid={uid}
           recipe={open}
           onBack={() => setOpenId(null)}
+          onTag={(tag) => {
+            setQuery("");
+            setPicked([tag]);
+            setOpenId(null);
+          }}
           onEdit={() => setEditing({ mode: "edit", recipe: open })}
           onDelete={() => {
             deleteRecipe(uid, open.id);
@@ -79,41 +99,101 @@ export default function RecipesView({ uid, recipes }: { uid: string; recipes: Re
 
       {recipes.length === 0 ? (
         <p className="rounded-2xl border border-dashed border-border p-6 text-center text-sm leading-relaxed text-muted">
-          No recipes yet. Tap <span className="font-medium text-text">Add recipe</span> to type one in, or paste a
-          TikTok, Instagram, or YouTube link with a name. Photos and tags come next.
+          No recipes yet. Tap <span className="font-medium text-text">Add recipe</span> to type one in, paste a TikTok,
+          Instagram, or YouTube link, or add a photo of a cookbook page.
         </p>
       ) : (
-        <ul className="space-y-2">
-          {recipes.map((r) => {
-            const link = r.source.url ? parseLink(r.source.url) : null;
-            const bits = [
-              r.ingredients.length ? `${r.ingredients.length} ingredient${r.ingredients.length === 1 ? "" : "s"}` : null,
-              link?.ok ? SITE_LABEL[link.site] : null,
-              Object.keys(r.photos ?? {}).length ? `${Object.keys(r.photos ?? {}).length} photo${Object.keys(r.photos ?? {}).length === 1 ? "" : "s"}` : null,
-            ].filter(Boolean);
-            const cover = coverPhoto(r.photos);
-            return (
-              <li key={r.id}>
+        <>
+          <div className="space-y-2">
+            <input
+              type="search"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search: soup, chicken lemon, thai..."
+              aria-label="Search recipes"
+              autoCapitalize="none"
+              className="block min-h-12 w-full rounded-xl border border-border bg-surface px-3 text-base outline-none focus:border-accent"
+            />
+            <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1" role="group" aria-label="Filter by tag">
+              {chips.map((t) => {
+                const on = picked.includes(t);
+                const label = t === seasonTag ? `In season: ${tagLeaf(t)}` : null;
+                return (
+                  <button
+                    key={t}
+                    type="button"
+                    aria-pressed={on}
+                    onClick={() => toggle(t)}
+                    className={`min-h-10 shrink-0 rounded-full border px-3 text-sm ${
+                      on ? "border-accent bg-accent-soft font-semibold text-accent" : "border-border bg-surface"
+                    }`}
+                  >
+                    {label ?? <TagLabel tag={t} />}
+                  </button>
+                );
+              })}
+            </div>
+            {filtering && (
+              <p className="flex items-center justify-between text-sm text-muted">
+                <span>
+                  {shown.length} of {recipes.length} recipes
+                </span>
                 <button
                   type="button"
-                  onClick={() => setOpenId(r.id)}
-                  className="flex min-h-16 w-full items-center gap-3 rounded-2xl border border-border bg-surface px-3 py-2 text-left"
+                  onClick={() => {
+                    setQuery("");
+                    setPicked([]);
+                  }}
+                  className="min-h-10 px-2 font-medium text-accent"
                 >
-                  {cover && (
-                    <RecipePhoto uid={uid} recipeId={r.id} photo={cover} alt="" className="h-14 w-14 shrink-0 rounded-xl" />
-                  )}
-                  <span className="flex min-w-0 flex-col px-1">
-                    <span className="font-semibold">{r.title}</span>
-                    <span className="text-xs text-muted">
-                      {bits.join(" · ") || "Just a name so far"}
-                      {r.pending && <span className="text-warn"> · waiting to sync</span>}
-                    </span>
-                  </span>
+                  Clear
                 </button>
-              </li>
-            );
-          })}
-        </ul>
+              </p>
+            )}
+          </div>
+
+          {shown.length === 0 ? (
+            <p className="rounded-2xl border border-dashed border-border p-6 text-center text-sm text-muted">
+              Nothing matches. Try fewer words or tags.
+            </p>
+          ) : (
+            <ul className="space-y-2">
+              {shown.map((r) => {
+                const link = r.source.url ? parseLink(r.source.url) : null;
+                const photoCount = Object.keys(r.photos ?? {}).length;
+                const bits = [
+                  r.ingredients.length ? `${r.ingredients.length} ingredient${r.ingredients.length === 1 ? "" : "s"}` : null,
+                  link?.ok ? SITE_LABEL[link.site] : null,
+                  photoCount ? `${photoCount} photo${photoCount === 1 ? "" : "s"}` : null,
+                ].filter(Boolean);
+                const cover = coverPhoto(r.photos);
+                return (
+                  <li key={r.id}>
+                    <button
+                      type="button"
+                      onClick={() => setOpenId(r.id)}
+                      className="flex min-h-16 w-full items-center gap-3 rounded-2xl border border-border bg-surface px-3 py-2 text-left"
+                    >
+                      {cover && (
+                        <RecipePhoto uid={uid} recipeId={r.id} photo={cover} alt="" className="h-14 w-14 shrink-0 rounded-xl" />
+                      )}
+                      <span className="flex min-w-0 flex-col px-1">
+                        <span className="font-semibold">{r.title}</span>
+                        <span className="text-xs text-muted">
+                          {bits.join(" · ") || "Just a name so far"}
+                          {r.pending && <span className="text-warn"> · waiting to sync</span>}
+                        </span>
+                        {r.tags.length > 0 && (
+                          <span className="mt-0.5 truncate text-xs text-accent">{r.tags.map(tagLeaf).join(" · ")}</span>
+                        )}
+                      </span>
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </>
       )}
       {editor}
     </div>

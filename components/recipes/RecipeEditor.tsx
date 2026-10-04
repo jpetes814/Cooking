@@ -9,6 +9,8 @@ import { hasContent, mergeDraft, type ImportDraft, type ImportVia } from "@/lib/
 import { buildRecipe, parseLink, toInput, type Recipe, type RecipeDoc } from "@/lib/model/recipe";
 import { MAX_PHOTOS, sortedPhotos } from "@/lib/model/photos";
 import PhotoPicker, { type NewPhoto } from "./PhotoPicker";
+import TagPicker from "./TagPicker";
+import { normalizeTags } from "@/lib/search/tags";
 
 export interface PhotoEdits {
   add: NewPhoto[];
@@ -32,15 +34,19 @@ const FILLED_FROM: Record<ImportVia, string> = {
 export default function RecipeEditor({
   uid,
   existing,
+  usedTags,
   onSave,
   onClose,
 }: {
   uid: string;
   existing?: Recipe;
+  /** Tags already on other recipes, offered first. */
+  usedTags: string[];
   onSave: (recipe: RecipeDoc, photos: PhotoEdits) => void;
   onClose: () => void;
 }) {
   const [form, setForm] = useState(() => toInput(existing));
+  const [tags, setTags] = useState<string[]>(() => existing?.tags ?? []);
   const [added, setAdded] = useState<NewPhoto[]>([]);
   const [removed, setRemoved] = useState<string[]>([]);
   const kept = sortedPhotos(existing?.photos).filter((p) => !removed.includes(p.id));
@@ -88,7 +94,7 @@ export default function RecipeEditor({
       setError(built.error);
       return;
     }
-    onSave(built.recipe, { add: added, remove: removed });
+    onSave({ ...built.recipe, tags: normalizeTags(tags) }, { add: added, remove: removed });
   }
 
   return (
@@ -130,6 +136,7 @@ export default function RecipeEditor({
           onRemoveExisting={(id) => setRemoved((r) => [...r, id])}
           onRemoveAdded={(id) => setAdded((a) => a.filter((p) => p.id !== id))}
         />
+        <TagPicker tags={tags} used={usedTags} onChange={setTags} />
         <TextInput label="Servings" value={form.servings} onChange={set("servings")} inputMode="decimal" placeholder="4" />
         <TextArea
           label="Ingredients"
