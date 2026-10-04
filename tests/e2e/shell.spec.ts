@@ -1,0 +1,20 @@
+import { expect, test } from "@playwright/test";
+
+test("serves an installable manifest", async ({ request }) => {
+  const res = await request.get("/manifest.webmanifest");
+  expect(res.ok()).toBe(true);
+  const manifest = await res.json();
+  expect(manifest.name).toBe("Recipe Box");
+  expect(manifest.display).toBe("standalone");
+  for (const icon of manifest.icons) {
+    expect((await request.get(icon.src)).ok(), icon.src).toBe(true);
+  }
+});
+
+test("switches tabs", async ({ page }) => {
+  await page.goto("/");
+  await expect(page.getByRole("heading", { name: "Your recipes" })).toBeVisible();
+  await page.getByRole("button", { name: "Shop" }).click();
+  await expect(page.getByRole("heading", { name: "Shopping trips" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Shop" })).toHaveAttribute("aria-current", "page");
+});
