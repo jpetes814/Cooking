@@ -1,0 +1,31 @@
+name: Idea
+description: Something new or better for Recipe Box
+labels: [enhancement]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        This repo is public. Leave out anything private: real names, addresses, emails, or keys.
+        When it's ready to build, comment `@claude please build this`.
+  - type: textarea
+    id: what
+    attributes:
+      label: What should it do?
+      placeholder: Let me scale a recipe to 6 servings.
+    validations:
+      required: true
+  - type: textarea
+    id: why
+    attributes:
+      label: Why?
+      placeholder: I cook for friends sometimes and do the math by hand.
+  - type: input
+    id: where
+    attributes:
+      label: Where in the app?
+      placeholder: Recipe page
+  - type: textarea
+    id: done
+    attributes:
+      label: What does "done" look like?
+      placeholder: A servings stepper on the recipe; ingredient amounts update, offline too.

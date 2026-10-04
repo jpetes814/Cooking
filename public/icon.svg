@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="112" fill="#2f7a4f"/>
+  <!-- A steaming pot: the recipe box's kitchen. -->
+  <path d="M206 120 c-20 24 20 40 0 64 M256 104 c-20 24 20 40 0 64 M306 120 c-20 24 20 40 0 64"
+        fill="none" stroke="#e3f1e8" stroke-width="18" stroke-linecap="round"/>
+  <rect x="96" y="226" width="320" height="28" rx="14" fill="#fff"/>
+  <path d="M124 262 h264 v58 c0 52-42 94-94 94 h-76 c-52 0-94-42-94-94z" fill="#fff"/>
+  <rect x="64" y="276" width="56" height="22" rx="11" fill="#fff"/>
+  <rect x="392" y="276" width="56" height="22" rx="11" fill="#fff"/>
+  <circle cx="256" cy="330" r="22" fill="#f2a541"/>
+</svg>
