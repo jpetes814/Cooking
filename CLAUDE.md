@@ -9,12 +9,12 @@ A personal recipe library and shopping planner, used mostly on a phone, often in
 - `npm ci`: install
 - `npm run dev`: local dev server at http://localhost:3000 (no service worker in dev)
 - `npm run check`: lint, typecheck, unit tests, build. **Must pass before you open a PR.** The build must pass with no env vars set.
-- `npm run test:rules`: Firestore security-rules tests against the local emulator. Run after any change to `firestore.rules`.
-- `npm run test:e2e`: Playwright on a production build at phone size (Pixel 7), against local Firebase emulators (auth + Firestore, seeded in `tests/e2e/global-setup.ts`). In Claude Code cloud sessions it uses the Chromium at `/opt/pw-browsers/chromium`; never run `playwright install` there.
+- `npm run test:rules`: Firestore and Storage security-rules tests against the local emulators. Run after any change to `firestore.rules` or `storage.rules`.
+- `npm run test:e2e`: Playwright on a production build at phone size (Pixel 7), against local Firebase emulators (Auth, Firestore, Storage; seeded in `tests/e2e/global-setup.ts`). In Claude Code cloud sessions it uses the Chromium at `/opt/pw-browsers/chromium`; never run `playwright install` there.
 - `node scripts/make-icons.mjs`: regenerate PNG icons after editing `public/icon.svg`
 
 - `npm run emulators` plus `npm run dev:local` (second terminal): develop against local Firebase with no real project. Create test users with the helpers in `tests/e2e/firebase.ts`.
-- The emulators need Java 21.
+- The emulators need Java 21. In Claude Code cloud sessions, run `test:rules` and `test:e2e` with the HTTPS proxy unset (`env -u HTTPS_PROXY -u https_proxy -u GLOBAL_AGENT_HTTPS_PROXY ...`): otherwise the Storage emulator's allowlist lookup goes through the session proxy and gets blocked.
 
 ## Stack
 
@@ -26,13 +26,14 @@ Next.js 16 (App Router), React 19, TypeScript, Tailwind 4 (configured in `app/gl
 - `app/api/`: the only place server secrets are read. Every route checks the signed-in user first (`lib/ai/guard.ts`).
 - `lib/ai/`: every Claude call goes through `lib/ai/claude.ts` (structured output checked by a zod schema). Model IDs live in `lib/ai/models.ts`, prompts in `lib/ai/prompts/`, stand-in answers for tests in `lib/ai/mocks.ts`.
 - `lib/data/`: every Firestore and Storage read and write. Components never call Firebase directly.
+- Photos: shrunk on the phone (`lib/photos/shrink.ts`), kept in IndexedDB (`lib/photos/store.ts`) until uploaded by the queue in `lib/data/photos.ts`, then shown from their download address, which `public/sw.js` caches for offline. A recipe's photos are a map keyed by photo id (`lib/model/photos.ts`).
 - `lib/import/`: "Fill from link". Recipe pages are read from their schema.org JSON-LD with no AI; captions and plain pages go to Claude. All outside fetches go through `lib/import/sources.ts`, which blocks private addresses (`safe-url.ts`). Tests use the fake sites in `lib/ai/mocks.ts`.
 - `lib/model/`, `lib/search/`, `lib/shop/`: pure logic (recipe validation, ingredient parsing, tag search, merging shopping lists). Keep it pure and unit tested.
 - `public/sw.js`: the service worker. `tests/unit/` (Vitest), `tests/rules/` (security rules), `tests/e2e/` (Playwright).
 
 ## Data
 
-Single user. Everything lives under `users/{uid}/` (recipes, trips, pantry) in Firestore, and photos under `users/{uid}/` in Storage. An email allowlist (`config/allowlist`) keeps strangers out even if they make an account.
+Single user. Everything lives under `users/{uid}/` (recipes, trips, pantry) in Firestore, and photos under `users/{uid}/photos/` in Storage (`storage.rules` checks the same allowlist). An email allowlist (`config/allowlist`) keeps strangers out even if they make an account.
 
 ## Rules
 

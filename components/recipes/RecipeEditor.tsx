@@ -7,6 +7,13 @@ import { useOnline } from "@/components/shell/useOnline";
 import { callAi } from "@/lib/ai/client";
 import { hasContent, mergeDraft, type ImportDraft, type ImportVia } from "@/lib/import/draft";
 import { buildRecipe, parseLink, toInput, type Recipe, type RecipeDoc } from "@/lib/model/recipe";
+import { MAX_PHOTOS, sortedPhotos } from "@/lib/model/photos";
+import PhotoPicker, { type NewPhoto } from "./PhotoPicker";
+
+export interface PhotoEdits {
+  add: NewPhoto[];
+  remove: string[];
+}
 
 type FillState =
   | { status: "idle" }
@@ -23,15 +30,20 @@ const FILLED_FROM: Record<ImportVia, string> = {
  * name is a complete recipe; the rest can be filled in later.
  */
 export default function RecipeEditor({
+  uid,
   existing,
   onSave,
   onClose,
 }: {
+  uid: string;
   existing?: Recipe;
-  onSave: (recipe: RecipeDoc) => void;
+  onSave: (recipe: RecipeDoc, photos: PhotoEdits) => void;
   onClose: () => void;
 }) {
   const [form, setForm] = useState(() => toInput(existing));
+  const [added, setAdded] = useState<NewPhoto[]>([]);
+  const [removed, setRemoved] = useState<string[]>([]);
+  const kept = sortedPhotos(existing?.photos).filter((p) => !removed.includes(p.id));
   const [error, setError] = useState<string | null>(null);
   const [fill, setFill] = useState<FillState>({ status: "idle" });
   const online = useOnline();
@@ -76,7 +88,7 @@ export default function RecipeEditor({
       setError(built.error);
       return;
     }
-    onSave(built.recipe);
+    onSave(built.recipe, { add: added, remove: removed });
   }
 
   return (
@@ -108,6 +120,16 @@ export default function RecipeEditor({
             )}
           </div>
         )}
+        <PhotoPicker
+          uid={uid}
+          recipeId={existing?.id ?? null}
+          existing={kept}
+          added={added}
+          room={MAX_PHOTOS - kept.length - added.length}
+          onAdd={(photos) => setAdded((a) => [...a, ...photos])}
+          onRemoveExisting={(id) => setRemoved((r) => [...r, id])}
+          onRemoveAdded={(id) => setAdded((a) => a.filter((p) => p.id !== id))}
+        />
         <TextInput label="Servings" value={form.servings} onChange={set("servings")} inputMode="decimal" placeholder="4" />
         <TextArea
           label="Ingredients"

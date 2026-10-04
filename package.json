@@ -12,8 +12,8 @@
     "test:watch": "vitest",
     "test:e2e": "playwright test",
     "check": "npm run lint && npm run typecheck && npm test && npm run build",
-    "test:rules": "firebase emulators:exec --only firestore --project demo-recipe-box-rules \"vitest run --config vitest.rules.config.mts\"",
-    "emulators": "firebase emulators:start --only auth,firestore --project demo-recipe-box",
+    "test:rules": "firebase emulators:exec --only firestore,storage --project demo-recipe-box-rules \"vitest run --config vitest.rules.config.mts\"",
+    "emulators": "firebase emulators:start --only auth,firestore,storage --project demo-recipe-box",
     "dev:local": "NEXT_PUBLIC_FIREBASE_EMULATORS=1 next dev"
   },
   "engines": {

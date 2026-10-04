@@ -21,6 +21,8 @@ export interface Ingredient {
   name: string;
 }
 
+import type { PhotoMap } from "./photos";
+
 export type SourceKind = "manual" | "link";
 export type LinkSite = "tiktok" | "instagram" | "youtube" | "pinterest" | "web";
 
@@ -32,6 +34,8 @@ export interface RecipeDoc {
   steps: string[];
   tags: string[];
   notes: string;
+  /** Keyed by photo id. Missing on recipes saved before photos existed. */
+  photos?: PhotoMap;
   createdAt: number;
   updatedAt: number;
 }
@@ -280,6 +284,7 @@ export function buildRecipe(input: RecipeInput, now: number, existing?: RecipeDo
       ingredients,
       steps,
       tags: existing?.tags ?? [],
+      photos: existing?.photos ?? {},
       notes,
       createdAt: existing?.createdAt ?? now,
       updatedAt: now,

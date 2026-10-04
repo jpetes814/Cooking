@@ -2,20 +2,28 @@
 
 import { useState } from "react";
 import { formatAmount, formatQty, parseLink, SITE_LABEL, type Recipe } from "@/lib/model/recipe";
+import { sortedPhotos } from "@/lib/model/photos";
+import RecipePhoto from "./RecipePhoto";
+import PhotoViewer from "./PhotoViewer";
 
 /** One recipe, readable while cooking. */
 export default function RecipeDetail({
+  uid,
   recipe,
   onBack,
   onEdit,
   onDelete,
 }: {
+  uid: string;
   recipe: Recipe;
   onBack: () => void;
   onEdit: () => void;
   onDelete: () => void;
 }) {
   const [confirming, setConfirming] = useState(false);
+  const [viewing, setViewing] = useState<string | null>(null);
+  const photos = sortedPhotos(recipe.photos);
+  const viewed = photos.find((p) => p.id === viewing) ?? null;
   const link = recipe.source.url ? parseLink(recipe.source.url) : null;
 
   return (
@@ -32,6 +40,26 @@ export default function RecipeDetail({
           Edit
         </button>
       </div>
+
+      {photos.length > 0 && (
+        <section aria-label="Photos" className="space-y-2">
+          <button type="button" onClick={() => setViewing(photos[0].id)} className="block w-full" aria-label="Open photo 1">
+            <RecipePhoto uid={uid} recipeId={recipe.id} photo={photos[0]} alt={recipe.title} className="aspect-[4/3] w-full rounded-2xl" />
+          </button>
+          {photos.length > 1 && (
+            <div className="flex gap-2 overflow-x-auto pb-1">
+              {photos.slice(1).map((p, i) => (
+                <button key={p.id} type="button" onClick={() => setViewing(p.id)} aria-label={`Open photo ${i + 2}`} className="shrink-0">
+                  <RecipePhoto uid={uid} recipeId={recipe.id} photo={p} alt="" className="h-20 w-20 rounded-xl" />
+                </button>
+              ))}
+            </div>
+          )}
+        </section>
+      )}
+      {viewed && (
+        <PhotoViewer uid={uid} recipeId={recipe.id} photo={viewed} title={recipe.title} onClose={() => setViewing(null)} />
+      )}
 
       <header>
         <h2 className="text-2xl font-bold tracking-tight">{recipe.title}</h2>
@@ -96,7 +124,7 @@ export default function RecipeDetail({
         </section>
       )}
 
-      {recipe.ingredients.length === 0 && recipe.steps.length === 0 && (
+      {recipe.ingredients.length === 0 && recipe.steps.length === 0 && photos.length === 0 && (
         <p className="rounded-2xl border border-dashed border-border p-5 text-center text-sm text-muted">
           Just the {link?.ok ? "link" : "name"} for now. Tap Edit to add ingredients and steps.
         </p>

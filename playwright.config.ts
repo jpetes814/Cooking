@@ -31,8 +31,8 @@ export default defineConfig({
   ],
   webServer: [
     {
-      // Local Firebase (Auth + Firestore) so tests never touch real data.
-      command: "npx firebase emulators:start --only auth,firestore --project demo-recipe-box",
+      // Local Firebase (Auth, Firestore, Storage) so tests never touch real data.
+      command: "npx firebase emulators:start --only auth,firestore,storage --project demo-recipe-box",
       url: "http://127.0.0.1:9099",
       reuseExistingServer: !process.env.CI,
       timeout: 120_000,
