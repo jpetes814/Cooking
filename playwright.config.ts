@@ -11,11 +11,12 @@ export default defineConfig({
   testDir: "tests/e2e",
   timeout: 45_000,
   expect: { timeout: 10_000 },
-  // Tests will share one set of local Firebase servers, so run them one at a time.
+  // Tests share one set of local Firebase servers, so run them one at a time.
   workers: 1,
   fullyParallel: false,
   retries: process.env.CI ? 1 : 0,
   reporter: process.env.CI ? [["github"], ["html", { open: "never" }]] : "list",
+  globalSetup: "./tests/e2e/global-setup.ts",
   use: {
     baseURL: `http://localhost:${PORT}`,
     trace: "retain-on-failure",
@@ -30,11 +31,21 @@ export default defineConfig({
   ],
   webServer: [
     {
+      // Local Firebase (Auth + Firestore) so tests never touch real data.
+      command: "npx firebase emulators:start --only auth,firestore --project demo-recipe-box",
+      url: "http://127.0.0.1:9099",
+      reuseExistingServer: !process.env.CI,
+      timeout: 120_000,
+      // Let the Firebase CLI stop its Java emulator instead of orphaning it.
+      gracefulShutdown: { signal: "SIGINT", timeout: 15_000 },
+    },
+    {
       // A real production build, so the service worker registers like it does on a phone.
       command: `npm run build && npm run start -- -p ${PORT}`,
       url: `http://localhost:${PORT}`,
       reuseExistingServer: !process.env.CI,
       timeout: 240_000,
+      env: { NEXT_PUBLIC_FIREBASE_EMULATORS: "1" },
     },
   ],
 });

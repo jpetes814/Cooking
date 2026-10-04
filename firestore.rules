@@ -1,0 +1,47 @@
+rules_version = '2';
+
+// Who can see and change what. Paste this into Firebase console > Firestore >
+// Rules for both projects whenever it changes (docs/SETUP.md, section 3).
+//
+// Two locks on everything:
+// 1. Your email must be on the allowlist (config/allowlist, edited by hand in
+//    the console, never from the app). Strangers who make an account still
+//    can't read or write anything.
+// 2. You only ever see your own folder, users/{your uid}.
+//
+// Anything not listed below is closed. Each new kind of data gets its own
+// match block and a test in tests/rules/.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() {
+      return request.auth != null && request.auth.token.email is string;
+    }
+
+    function allowed() {
+      let list = /databases/$(database)/documents/config/allowlist;
+      return signedIn() && exists(list) && request.auth.token.email.lower() in get(list).data.emails;
+    }
+
+    function owner(uid) {
+      return allowed() && request.auth.uid == uid;
+    }
+
+    match /config/{doc} {
+      allow read, write: if false;
+    }
+
+    match /users/{uid} {
+      allow read, write: if owner(uid);
+
+      // Staples you always have (salt, olive oil), kept off shopping lists.
+      match /pantry/staples {
+        allow read, delete: if owner(uid);
+        allow create, update: if owner(uid)
+          && request.resource.data.items is list
+          && request.resource.data.items.size() <= 300
+          && request.resource.data.updatedAt is number;
+      }
+    }
+  }
+}

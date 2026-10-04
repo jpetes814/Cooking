@@ -3,25 +3,40 @@
 import { useState } from "react";
 import TabBar, { type TabId } from "./TabBar";
 import StatusLine from "./StatusLine";
+import AccountMenu from "./AccountMenu";
+import SetupNeeded from "./SetupNeeded";
+import NotOnList from "./NotOnList";
+import SignIn from "@/components/auth/SignIn";
+import { useAuth } from "@/components/auth/useAuth";
+import { usePantry } from "@/components/pantry/usePantry";
+import PantryView from "@/components/pantry/PantryView";
 
-// What each tab will hold, and which build step brings it.
-const COMING: Record<TabId, { title: string; body: string }> = {
+// Tabs that don't have their real screen yet.
+const COMING: Partial<Record<TabId, { title: string; body: string }>> = {
   recipes: {
     title: "Your recipes",
-    body: "Snap a cookbook page, save a screenshot, or paste a TikTok, Instagram, or YouTube link. Tag it (soups, fall, weeknight...) and find it again by tag or by what's in it. Sign-in and saving come next.",
+    body: "Snap a cookbook page, save a screenshot, or paste a TikTok, Instagram, or YouTube link. Tag it (soups, fall, weeknight...) and find it again by tag or by what's in it. Coming in the next step.",
   },
   shop: {
     title: "Shopping trips",
     body: "Pick a few recipes for the week and get one list, with the same ingredients added up and grouped by aisle. Check things off in the store, even with no signal.",
   },
-  pantry: {
-    title: "Pantry staples",
-    body: "Salt, oil, the things you always have. They stay off your shopping list unless you ask for them.",
-  },
 };
 
 export default function AppShell() {
+  const auth = useAuth();
+
+  if (auth.status === "loading") return <div className="h-full bg-bg" />;
+  if (auth.status === "unconfigured") return <SetupNeeded />;
+  if (auth.status === "signedOut") return <SignIn />;
+  return <SignedIn uid={auth.uid} email={auth.email} />;
+}
+
+function SignedIn({ uid, email }: { uid: string; email: string }) {
   const [tab, setTab] = useState<TabId>("recipes");
+  const pantry = usePantry(uid);
+
+  if (pantry.status === "denied") return <NotOnList email={email} />;
   const coming = COMING[tab];
 
   return (
@@ -32,16 +47,25 @@ export default function AppShell() {
             <h1 className="truncate text-xl font-bold tracking-tight">Recipe Box</h1>
             <StatusLine />
           </div>
+          <AccountMenu email={email} />
         </div>
       </header>
 
       <main className="flex-1 overflow-y-auto">
         <div className="mx-auto max-w-xl px-4 py-5">
-          <section className="rounded-2xl border border-border bg-surface p-5">
-            <h2 className="text-lg font-semibold">{coming.title}</h2>
-            <p className="mt-2 text-sm leading-relaxed text-muted">{coming.body}</p>
-            <p className="mt-3 text-xs font-medium text-accent">Coming soon</p>
-          </section>
+          {coming && (
+            <section className="rounded-2xl border border-border bg-surface p-5">
+              <h2 className="text-lg font-semibold">{coming.title}</h2>
+              <p className="mt-2 text-sm leading-relaxed text-muted">{coming.body}</p>
+              <p className="mt-3 text-xs font-medium text-accent">Coming soon</p>
+            </section>
+          )}
+          {tab === "pantry" &&
+            (pantry.status === "loading" ? (
+              <p className="py-6 text-center text-sm text-muted">Loading...</p>
+            ) : (
+              <PantryView uid={uid} items={pantry.items} pending={pantry.pending} />
+            ))}
         </div>
       </main>
 

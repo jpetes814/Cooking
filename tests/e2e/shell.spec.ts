@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { signIn, TESTER } from "./firebase";
 
 test("serves an installable manifest", async ({ request }) => {
   const res = await request.get("/manifest.webmanifest");
@@ -12,7 +13,7 @@ test("serves an installable manifest", async ({ request }) => {
 });
 
 test("switches tabs", async ({ page }) => {
-  await page.goto("/");
+  await signIn(page, TESTER);
   await expect(page.getByRole("heading", { name: "Your recipes" })).toBeVisible();
   await page.getByRole("button", { name: "Shop" }).click();
   await expect(page.getByRole("heading", { name: "Shopping trips" })).toBeVisible();
