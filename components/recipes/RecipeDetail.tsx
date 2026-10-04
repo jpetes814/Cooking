@@ -5,18 +5,22 @@ import { formatAmount, formatQty, parseLink, SITE_LABEL, type Recipe } from "@/l
 import { sortedPhotos } from "@/lib/model/photos";
 import RecipePhoto from "./RecipePhoto";
 import PhotoViewer from "./PhotoViewer";
+import { TagLabel } from "./TagPicker";
 
 /** One recipe, readable while cooking. */
 export default function RecipeDetail({
   uid,
   recipe,
   onBack,
+  onTag,
   onEdit,
   onDelete,
 }: {
   uid: string;
   recipe: Recipe;
   onBack: () => void;
+  /** Show every recipe with this tag. */
+  onTag: (tag: string) => void;
   onEdit: () => void;
   onDelete: () => void;
 }) {
@@ -69,6 +73,22 @@ export default function RecipeDetail({
             <span className="text-warn">{recipe.servings !== null ? " · " : ""}Saved on this phone, waiting to sync</span>
           )}
         </p>
+        {recipe.tags.length > 0 && (
+          <ul className="mt-3 flex flex-wrap gap-2" aria-label="Tags">
+            {recipe.tags.map((t) => (
+              <li key={t}>
+                <button
+                  type="button"
+                  onClick={() => onTag(t)}
+                  aria-label={`More recipes tagged ${t}`}
+                  className="min-h-9 rounded-full bg-accent-soft px-3 text-sm font-medium text-accent"
+                >
+                  <TagLabel tag={t} />
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
         {link?.ok && (
           <a
             href={link.url}
