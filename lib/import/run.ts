@@ -3,6 +3,7 @@ import type { ExtractedRecipe } from "@/lib/ai/prompts/import";
 import type { AiResult } from "@/lib/ai/claude";
 import type { ImportDraft, ImportVia } from "./draft";
 import type { Sources } from "./sources";
+import { normalizeTags } from "@/lib/search/tags";
 
 /**
  * "Fill from link": decide how to read a link, read it, and hand back a draft.
@@ -17,6 +18,16 @@ const NO_RECIPE_IN_CAPTION =
   "That caption doesn't have the recipe in it. Creators often put it in a comment or on screen, so type it in for now.";
 
 /** Keeps whatever Claude sends inside the limits the app and rules expect. */
+/** Turns a Claude result into a draft, or a friendly "nothing found". */
+export function draftFrom(res: AiResult<ExtractedRecipe>, emptyMessage: string): ImportResult {
+  if (!res.ok) return res;
+  const draft = tidyExtracted(res.data);
+  if (!res.data.found || (draft.ingredients.length === 0 && draft.steps.length === 0)) {
+    return { ok: false, status: 422, error: emptyMessage };
+  }
+  return { ok: true, draft, via: "ai" };
+}
+
 export function tidyExtracted(r: ExtractedRecipe): ImportDraft {
   const clip = (s: string, n: number) => s.trim().slice(0, n);
   const lines = (list: string[], max: number) =>
@@ -28,17 +39,12 @@ export function tidyExtracted(r: ExtractedRecipe): ImportDraft {
     ingredients: lines(r.ingredients, MAX_INGREDIENTS),
     steps: lines(r.steps, MAX_STEPS),
     notes: clip(r.notes, MAX_NOTES),
+    suggestedTags: normalizeTags(r.suggestedTags).slice(0, 8),
   };
 }
 
 async function viaClaude(extract: Extract, kind: string, text: string, emptyMessage: string): Promise<ImportResult> {
-  const res = await extract(kind, text);
-  if (!res.ok) return res;
-  const draft = tidyExtracted(res.data);
-  if (!res.data.found || (draft.ingredients.length === 0 && draft.steps.length === 0)) {
-    return { ok: false, status: 422, error: emptyMessage };
-  }
-  return { ok: true, draft, via: "ai" };
+  return draftFrom(await extract(kind, text), emptyMessage);
 }
 
 export async function importRecipe(raw: string, deps: { sources: Sources; extract: Extract }): Promise<ImportResult> {

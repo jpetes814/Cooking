@@ -10,6 +10,8 @@ export interface ImportDraft {
   ingredients: string[];
   steps: string[];
   notes: string;
+  /** Tags Claude thinks fit. Offered in the editor, never added without a tap. */
+  suggestedTags: string[];
 }
 
 /** Where a draft came from, so the editor can say how much to trust it. */

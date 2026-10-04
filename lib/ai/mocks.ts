@@ -10,7 +10,7 @@ import type { Sources } from "@/lib/import/sources";
 /** Pretends to read text: finds a recipe only if the text mentions garlic. */
 export function mockExtract(text: string): ExtractedRecipe {
   if (!/garlic/i.test(text)) {
-    return { found: false, title: "", servings: null, ingredients: [], steps: [], notes: "" };
+    return { found: false, title: "", servings: null, ingredients: [], steps: [], notes: "", suggestedTags: [] };
   }
   return {
     found: true,
@@ -19,6 +19,7 @@ export function mockExtract(text: string): ExtractedRecipe {
     ingredients: ["200 g spaghetti", "2 lemons", "3 cloves garlic, sliced", "2 Tbsp olive oil", "salt to taste"],
     steps: ["Boil the pasta in salted water.", "Sizzle the garlic in the oil.", "Toss everything with lemon juice and zest."],
     notes: "Add chili flakes if you like heat.",
+    suggestedTags: ["dish/pasta", "effort/quick", "cuisine/italian"],
   };
 }
 
