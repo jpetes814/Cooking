@@ -6,7 +6,7 @@ import {
   initializeTestEnvironment,
   type RulesTestEnvironment,
 } from "@firebase/rules-unit-testing";
-import { deleteDoc, doc, getDoc, setDoc } from "firebase/firestore";
+import { collection, deleteDoc, doc, getDoc, getDocs, setDoc, updateDoc } from "firebase/firestore";
 
 const ME = { uid: "me", email: "me@example.com" };
 const OTHER = { uid: "other", email: "other@example.com" }; // on the allowlist, but it's not their folder
@@ -16,6 +16,18 @@ let env: RulesTestEnvironment;
 
 const as = (who: { uid: string; email: string }) => env.authenticatedContext(who.uid, { email: who.email }).firestore();
 const staples = (items: string[] = ["salt"]) => ({ items, updatedAt: 1 });
+const recipe = (overrides: Record<string, unknown> = {}) => ({
+  title: "Tomato soup",
+  source: { kind: "manual", url: null },
+  servings: 4,
+  ingredients: [{ raw: "2 cups stock", qty: 2, unit: "cup", name: "stock" }],
+  steps: ["Simmer"],
+  tags: [],
+  notes: "",
+  createdAt: 1,
+  updatedAt: 1,
+  ...overrides,
+});
 
 beforeAll(async () => {
   env = await initializeTestEnvironment({
@@ -35,6 +47,7 @@ beforeEach(async () => {
     await setDoc(doc(db, "config/allowlist"), { emails: [ME.email, OTHER.email] });
     await setDoc(doc(db, "users/me/pantry/staples"), staples());
     await setDoc(doc(db, "users/stranger/pantry/staples"), staples());
+    await setDoc(doc(db, "users/me/recipes/r1"), recipe());
   });
 });
 
@@ -70,6 +83,40 @@ describe("pantry", () => {
   it("matches emails without caring about capitals", async () => {
     const shouty = env.authenticatedContext("me", { email: "ME@Example.com" }).firestore();
     await assertSucceeds(getDoc(doc(shouty, "users/me/pantry/staples")));
+  });
+});
+
+describe("recipes", () => {
+  it("you can list, read, add, edit, and delete your own", async () => {
+    await assertSucceeds(getDocs(collection(as(ME), "users/me/recipes")));
+    await assertSucceeds(getDoc(doc(as(ME), "users/me/recipes/r1")));
+    await assertSucceeds(setDoc(doc(as(ME), "users/me/recipes/r2"), recipe({ title: "Pancakes" })));
+    await assertSucceeds(updateDoc(doc(as(ME), "users/me/recipes/r1"), { title: "Roasted tomato soup", updatedAt: 2 }));
+    await assertSucceeds(deleteDoc(doc(as(ME), "users/me/recipes/r1")));
+  });
+
+  it("nobody else can see or change them", async () => {
+    await assertFails(getDocs(collection(as(OTHER), "users/me/recipes")));
+    await assertFails(getDoc(doc(as(OTHER), "users/me/recipes/r1")));
+    await assertFails(setDoc(doc(as(OTHER), "users/me/recipes/r9"), recipe()));
+    await assertFails(deleteDoc(doc(as(OTHER), "users/me/recipes/r1")));
+    await assertFails(setDoc(doc(as(STRANGER), "users/stranger/recipes/r1"), recipe()));
+  });
+
+  it("rejects malformed recipes", async () => {
+    const ref = doc(as(ME), "users/me/recipes/bad");
+    await assertFails(setDoc(ref, recipe({ title: "" })));
+    await assertFails(setDoc(ref, recipe({ title: "x".repeat(121) })));
+    await assertFails(setDoc(ref, recipe({ ingredients: "2 cups stock" })));
+    await assertFails(setDoc(ref, recipe({ steps: Array.from({ length: 61 }, () => "stir") })));
+    await assertFails(setDoc(ref, recipe({ createdAt: "yesterday" })));
+    const noNotes: Record<string, unknown> = recipe();
+    delete noNotes.notes;
+    await assertFails(setDoc(ref, noNotes));
+  });
+
+  it("editing can't change when it was first saved", async () => {
+    await assertFails(updateDoc(doc(as(ME), "users/me/recipes/r1"), { createdAt: 99, updatedAt: 2 }));
   });
 });
 

@@ -10,13 +10,11 @@ import SignIn from "@/components/auth/SignIn";
 import { useAuth } from "@/components/auth/useAuth";
 import { usePantry } from "@/components/pantry/usePantry";
 import PantryView from "@/components/pantry/PantryView";
+import { useRecipes } from "@/components/recipes/useRecipes";
+import RecipesView from "@/components/recipes/RecipesView";
 
 // Tabs that don't have their real screen yet.
 const COMING: Partial<Record<TabId, { title: string; body: string }>> = {
-  recipes: {
-    title: "Your recipes",
-    body: "Snap a cookbook page, save a screenshot, or paste a TikTok, Instagram, or YouTube link. Tag it (soups, fall, weeknight...) and find it again by tag or by what's in it. Coming in the next step.",
-  },
   shop: {
     title: "Shopping trips",
     body: "Pick a few recipes for the week and get one list, with the same ingredients added up and grouped by aisle. Check things off in the store, even with no signal.",
@@ -35,8 +33,14 @@ export default function AppShell() {
 function SignedIn({ uid, email }: { uid: string; email: string }) {
   const [tab, setTab] = useState<TabId>("recipes");
   const pantry = usePantry(uid);
+  const recipes = useRecipes(uid);
 
-  if (pantry.status === "denied") return <NotOnList email={email} />;
+  // Pantry has been readable since the sign-in step, so if it loads but
+  // something newer doesn't, the project's rules are behind, not the allowlist.
+  if (pantry.status === "denied") return <NotOnList email={email} reason="notListed" />;
+  if (recipes.status === "denied") {
+    return <NotOnList email={email} reason={pantry.status === "ready" ? "rulesOutdated" : "notListed"} />;
+  }
   const coming = COMING[tab];
 
   return (
@@ -60,6 +64,12 @@ function SignedIn({ uid, email }: { uid: string; email: string }) {
               <p className="mt-3 text-xs font-medium text-accent">Coming soon</p>
             </section>
           )}
+          {tab === "recipes" &&
+            (recipes.status === "loading" ? (
+              <p className="py-6 text-center text-sm text-muted">Loading...</p>
+            ) : (
+              <RecipesView uid={uid} recipes={recipes.recipes} />
+            ))}
           {tab === "pantry" &&
             (pantry.status === "loading" ? (
               <p className="py-6 text-center text-sm text-muted">Loading...</p>
