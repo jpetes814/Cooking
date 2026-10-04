@@ -122,6 +122,7 @@ describe("buildRecipe", () => {
         steps: [],
         tags: [],
         notes: "",
+        photos: {},
         createdAt: NOW,
         updatedAt: NOW,
       },

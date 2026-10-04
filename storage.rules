@@ -1,0 +1,31 @@
+rules_version = '2';
+
+// Who can see and change photo files. Paste this into Firebase console >
+// Storage > Rules for both projects whenever it changes (docs/SETUP.md, section 3).
+//
+// Same two locks as the database: your email must be on the allowlist (read
+// from Firestore's config/allowlist), and you only ever touch your own folder.
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    function owner(uid) {
+      return request.auth != null
+        && request.auth.uid == uid
+        && request.auth.token.email is string
+        && request.auth.token.email.lower()
+          in firestore.get(/databases/(default)/documents/config/allowlist).data.emails;
+    }
+
+    // Recipe photos, shrunk on the phone before upload. Photos are never
+    // edited in place: a changed photo is a new file.
+    match /users/{uid}/photos/{file} {
+      allow read: if owner(uid);
+      allow delete: if owner(uid) && request.resource == null;
+      allow write: if owner(uid)
+        && resource == null
+        && request.resource != null
+        && request.resource.size < 5 * 1024 * 1024
+        && request.resource.contentType.matches('image/.*');
+    }
+  }
+}

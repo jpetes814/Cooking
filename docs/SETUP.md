@@ -32,7 +32,12 @@ Needed from the sign-in step on. Make **two** projects, so test previews never t
 5. **Security rules:** open `firestore.rules` in this repo, copy all of it, then in Firebase go to **Firestore Database > Rules**, replace everything there with it, and tap **Publish**. Do this again whenever that file changes (the pull request will say so).
 6. **The allowlist:** **Firestore Database > Data > Start collection**. Collection ID `config`, document ID `allowlist`, field `emails` of type **array** with your email as a lowercase string.
 7. **Project settings (gear icon) > Your apps > Web (`</>`)**: register an app called `recipe-box`. Copy the `apiKey`, `authDomain`, `projectId`, `appId`, and `storageBucket` values for Vercel below.
-8. **Photos (from the photos step):** upgrade to **Blaze** (bottom-left **Upgrade**), then in Google Cloud **Billing > Budgets & alerts** add a $5 budget with email alerts. Then **Build > Storage > Get started**, production mode, and paste `storage.rules` into **Storage > Rules** the same way as step 5.
+8. **Photos:** recipe photos are kept in Firebase Storage, which needs the pay-as-you-go **Blaze** plan. At this size it should cost nothing, but set an alert so there are no surprises.
+   - Bottom-left **Upgrade**, pick **Blaze**, and add a billing account.
+   - In Google Cloud (console.cloud.google.com) go to **Billing > Budgets & alerts > Create budget**: $5 a month, email alerts on.
+   - Back in Firebase: **Build > Storage > Get started**, **production mode**, same location as your database.
+   - **Storage > Rules**: open `storage.rules` in this repo, copy all of it, paste it over what's there, and tap **Publish**. Firebase will ask to let Storage rules read Firestore (that's how they check the allowlist): tap **Grant**. Do this again whenever `storage.rules` changes.
+   - The `storageBucket` value from step 7 goes in Vercel as `NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET` (redeploy after adding it).
 9. Repeat 1 to 8 for a second project called `recipe-box-test`.
 
 ## 4. Vercel (hosting)

@@ -115,6 +115,15 @@ describe("recipes", () => {
     await assertFails(setDoc(ref, noNotes));
   });
 
+  it("allows up to 10 photos, and older recipes without any", async () => {
+    const photo = (i: number) => [`p${i}`, { path: `users/me/photos/p${i}.jpg`, url: null, addedAt: i }];
+    const photos = (n: number) => Object.fromEntries(Array.from({ length: n }, (_, i) => photo(i)));
+    await assertSucceeds(setDoc(doc(as(ME), "users/me/recipes/r3"), recipe({ photos: photos(10) })));
+    await assertFails(setDoc(doc(as(ME), "users/me/recipes/r4"), recipe({ photos: photos(11) })));
+    await assertFails(setDoc(doc(as(ME), "users/me/recipes/r5"), recipe({ photos: ["p1"] })));
+    await assertSucceeds(updateDoc(doc(as(ME), "users/me/recipes/r1"), { "photos.p1": { path: "x", url: null, addedAt: 1 } }));
+  });
+
   it("editing can't change when it was first saved", async () => {
     await assertFails(updateDoc(doc(as(ME), "users/me/recipes/r1"), { createdAt: 99, updatedAt: 2 }));
   });

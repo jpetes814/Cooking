@@ -2,9 +2,12 @@
 
 import { useState } from "react";
 import { createRecipe, deleteRecipe, updateRecipe } from "@/lib/data/recipes";
-import { parseLink, SITE_LABEL, type Recipe } from "@/lib/model/recipe";
+import { queueDeletes, queueUploads } from "@/lib/data/photos";
+import { parseLink, SITE_LABEL, type Recipe, type RecipeDoc } from "@/lib/model/recipe";
+import { applyPhotoEdits, coverPhoto, photoPath, sortedPhotos } from "@/lib/model/photos";
 import RecipeDetail from "./RecipeDetail";
-import RecipeEditor from "./RecipeEditor";
+import RecipeEditor, { type PhotoEdits } from "./RecipeEditor";
+import RecipePhoto from "./RecipePhoto";
 
 type Editing = { mode: "new" } | { mode: "edit"; recipe: Recipe } | null;
 
@@ -14,15 +17,28 @@ export default function RecipesView({ uid, recipes }: { uid: string; recipes: Re
   const [editing, setEditing] = useState<Editing>(null);
   const open = recipes.find((r) => r.id === openId) ?? null;
 
+  /** Saves the recipe, then hands new photos to the upload queue and old ones to the delete queue. */
+  function save(doc: RecipeDoc, edits: PhotoEdits) {
+    const existing = editing?.mode === "edit" ? editing.recipe : null;
+    const adds = edits.add.map((p) => ({ ...p, path: photoPath(uid, p.id) }));
+    const withPhotos = { ...doc, photos: applyPhotoEdits(existing?.photos, { add: adds, remove: edits.remove }, Date.now()) };
+    const id = existing ? existing.id : createRecipe(uid, withPhotos);
+    if (existing) updateRecipe(uid, id, withPhotos);
+    else setOpenId(id);
+    // Only photos that made it into the recipe (it holds at most 10).
+    const saved = adds.filter((p) => withPhotos.photos[p.id]);
+    if (saved.length) void queueUploads(uid, id, saved);
+    const gone = sortedPhotos(existing?.photos).filter((p) => edits.remove.includes(p.id));
+    if (gone.length) void queueDeletes(uid, gone);
+    setEditing(null);
+  }
+
   const editor = editing && (
     <RecipeEditor
+      uid={uid}
       existing={editing.mode === "edit" ? editing.recipe : undefined}
       onClose={() => setEditing(null)}
-      onSave={(doc) => {
-        if (editing.mode === "edit") updateRecipe(uid, editing.recipe.id, doc);
-        else setOpenId(createRecipe(uid, doc));
-        setEditing(null);
-      }}
+      onSave={save}
     />
   );
 
@@ -30,11 +46,14 @@ export default function RecipesView({ uid, recipes }: { uid: string; recipes: Re
     return (
       <>
         <RecipeDetail
+          uid={uid}
           recipe={open}
           onBack={() => setOpenId(null)}
           onEdit={() => setEditing({ mode: "edit", recipe: open })}
           onDelete={() => {
             deleteRecipe(uid, open.id);
+            const photos = sortedPhotos(open.photos);
+            if (photos.length) void queueDeletes(uid, photos);
             setOpenId(null);
           }}
         />
@@ -70,18 +89,25 @@ export default function RecipesView({ uid, recipes }: { uid: string; recipes: Re
             const bits = [
               r.ingredients.length ? `${r.ingredients.length} ingredient${r.ingredients.length === 1 ? "" : "s"}` : null,
               link?.ok ? SITE_LABEL[link.site] : null,
+              Object.keys(r.photos ?? {}).length ? `${Object.keys(r.photos ?? {}).length} photo${Object.keys(r.photos ?? {}).length === 1 ? "" : "s"}` : null,
             ].filter(Boolean);
+            const cover = coverPhoto(r.photos);
             return (
               <li key={r.id}>
                 <button
                   type="button"
                   onClick={() => setOpenId(r.id)}
-                  className="flex min-h-16 w-full flex-col justify-center rounded-2xl border border-border bg-surface px-4 py-3 text-left"
+                  className="flex min-h-16 w-full items-center gap-3 rounded-2xl border border-border bg-surface px-3 py-2 text-left"
                 >
-                  <span className="font-semibold">{r.title}</span>
-                  <span className="text-xs text-muted">
-                    {bits.join(" · ") || "Just a name so far"}
-                    {r.pending && <span className="text-warn"> · waiting to sync</span>}
+                  {cover && (
+                    <RecipePhoto uid={uid} recipeId={r.id} photo={cover} alt="" className="h-14 w-14 shrink-0 rounded-xl" />
+                  )}
+                  <span className="flex min-w-0 flex-col px-1">
+                    <span className="font-semibold">{r.title}</span>
+                    <span className="text-xs text-muted">
+                      {bits.join(" · ") || "Just a name so far"}
+                      {r.pending && <span className="text-warn"> · waiting to sync</span>}
+                    </span>
                   </span>
                 </button>
               </li>

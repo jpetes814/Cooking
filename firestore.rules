@@ -46,6 +46,7 @@ service cloud.firestore {
         && r.tags.size() <= 50
         && r.notes is string
         && r.notes.size() <= 4000
+        && (!('photos' in r) || (r.photos is map && r.photos.size() <= 10))
         && r.createdAt is number
         && r.updatedAt is number;
     }

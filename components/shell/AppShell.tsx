@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { drainPhotos } from "@/lib/data/photos";
 import TabBar, { type TabId } from "./TabBar";
 import StatusLine from "./StatusLine";
 import AccountMenu from "./AccountMenu";
@@ -34,6 +35,14 @@ function SignedIn({ uid, email }: { uid: string; email: string }) {
   const [tab, setTab] = useState<TabId>("recipes");
   const pantry = usePantry(uid);
   const recipes = useRecipes(uid);
+
+  // Photos saved with no signal go up on their own: now, and whenever signal returns.
+  useEffect(() => {
+    void drainPhotos(uid);
+    const retry = () => void drainPhotos(uid);
+    window.addEventListener("online", retry);
+    return () => window.removeEventListener("online", retry);
+  }, [uid]);
 
   // Pantry has been readable since the sign-in step, so if it loads but
   // something newer doesn't, the project's rules are behind, not the allowlist.
