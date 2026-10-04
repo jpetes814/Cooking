@@ -20,10 +20,13 @@
     "node": ">=22"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.131.0",
     "firebase": "^12.19.0",
+    "jose": "^6.2.12",
     "next": "^16.3.8",
     "react": "^19.2.8",
-    "react-dom": "^19.2.8"
+    "react-dom": "^19.2.8",
+    "zod": "^4.6.5"
   },
   "devDependencies": {
     "@firebase/rules-unit-testing": "^5.0.2",

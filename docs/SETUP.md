@@ -6,7 +6,7 @@ Goal: get Recipe Box live on a real URL, on your phone, with building-from-your-
 
 - **Free:** Vercel (Hobby plan), GitHub Actions (free minutes cover this easily), Firebase sign-in and database (Spark plan).
 - **Pennies:** recipe photos need Firebase Storage, which needs the pay-as-you-go **Blaze** plan. A few hundred shrunk photos is well inside the free allowance, so expect $0. Set a budget alert anyway (section 3).
-- **Pay as you go:** the Claude API. About a cent or two per photo read, and $0.50 to $2 per change Claude builds from a GitHub issue. A spend limit caps it.
+- **Pay as you go:** the Claude API. About a cent or two each time Claude reads a caption or photo, and $0.50 to $2 per change Claude builds from a GitHub issue. A spend limit caps it. Recipe websites fill in for free, with no AI.
 
 ## 1. GitHub repo settings
 
@@ -50,7 +50,8 @@ Needed from the sign-in step on. Make **two** projects, so test previews never t
    | `NEXT_PUBLIC_FIREBASE_APP_ID` | from `recipe-box` | from `recipe-box-test` |
    | `NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET` | from `recipe-box` | from `recipe-box-test` |
    | `ALLOWED_EMAILS` | your email | same |
-   | `ANTHROPIC_API_KEY` (from the AI step) | `recipe-box-app` key | same key |
+   | `ANTHROPIC_API_KEY` | `recipe-box-app` key | same key |
+   | `YOUTUBE_API_KEY` (optional, section 6) | your key | same key |
 
    After changing variables, redeploy (**Deployments > ... > Redeploy**).
 
@@ -60,3 +61,13 @@ Needed from the sign-in step on. Make **two** projects, so test previews never t
 2. iPhone: Share button > **Add to Home Screen**. Android: menu > **Install app**.
 3. Open it from the home-screen icon and sign in there (the installed app keeps its own sign-in, separate from the browser).
 4. Open it once with signal so your recipes are saved for offline.
+
+## 6. Optional: YouTube descriptions
+
+"Fill from link" reads a YouTube video's title on its own, but recipes usually live in the description, which needs a free Google key.
+
+1. At console.cloud.google.com, create a project (or reuse one), then **APIs & Services > Library**, search **YouTube Data API v3**, and tap **Enable**.
+2. **APIs & Services > Credentials > Create credentials > API key**. Tap the new key, then under **API restrictions** pick **Restrict key** and choose **YouTube Data API v3**.
+3. Add it to Vercel as `YOUTUBE_API_KEY` for Production and Preview, then redeploy.
+
+The free daily allowance is far more than one person will use.
