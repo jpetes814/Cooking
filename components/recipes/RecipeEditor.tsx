@@ -10,6 +10,8 @@ import { buildRecipe, parseLink, toInput, type Recipe, type RecipeDoc } from "@/
 import { MAX_PHOTOS, sortedPhotos } from "@/lib/model/photos";
 import PhotoPicker, { type NewPhoto } from "./PhotoPicker";
 import TagPicker from "./TagPicker";
+import RecipePreview from "./RecipePreview";
+import { reviewNotes } from "@/lib/model/review";
 import { normalizeTags } from "@/lib/search/tags";
 import { MAX_PHOTOS_TO_READ } from "@/lib/import/photos";
 
@@ -65,6 +67,10 @@ export default function RecipeEditor({
   const [fill, setFill] = useState<FillState>({ status: "idle" });
   const [read, setRead] = useState<FillState>({ status: "idle" });
   const [suggested, setSuggested] = useState<string[]>([]);
+  // Everything Claude offered, so the review can point out what came from it.
+  const [claudeTags, setClaudeTags] = useState<string[]>([]);
+  const [filledByClaude, setFilledByClaude] = useState(false);
+  const [reviewing, setReviewing] = useState<RecipeDoc | null>(null);
   const online = useOnline();
   const set = (key: keyof typeof form) => (v: string) => {
     setForm((f) => ({ ...f, [key]: v }));
@@ -84,6 +90,8 @@ export default function RecipeEditor({
     }
     setForm((current) => mergeDraft(current, draft).form);
     setSuggested(draft.suggestedTags.filter((t) => !tags.includes(t)));
+    setClaudeTags((c) => [...new Set([...c, ...draft.suggestedTags])]);
+    if (via === "ai") setFilledByClaude(true);
     const merged = mergeDraft(form, draft);
     setState(
       merged.filled.length
@@ -138,7 +146,42 @@ export default function RecipeEditor({
       setError(built.error);
       return;
     }
-    onSave({ ...built.recipe, tags: normalizeTags(tags) }, { add: added, remove: removed });
+    // Check it over first; saving happens from the review.
+    setReviewing({ ...built.recipe, tags: normalizeTags(tags) });
+  }
+
+  if (reviewing) {
+    return (
+      // A fresh sheet, so the review starts at the top with the notes and photos.
+      <Sheet key="review" title={existing ? "Edit recipe" : "New recipe"} onClose={onClose}>
+        <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted">Check it over</h3>
+        <RecipePreview
+          uid={uid}
+          recipeId={existing?.id ?? null}
+          recipe={reviewing}
+          kept={kept}
+          added={added}
+          notes={reviewNotes(reviewing, { filledByClaude, claudeTags })}
+          claudeTags={claudeTags}
+        />
+        <div className="pb-safe sticky bottom-0 mt-5 flex gap-2 bg-surface py-3">
+          <button
+            type="button"
+            onClick={() => setReviewing(null)}
+            className="min-h-12 flex-1 rounded-xl border border-border font-medium"
+          >
+            Back to edit
+          </button>
+          <button
+            type="button"
+            onClick={() => onSave(reviewing, { add: added, remove: removed })}
+            className="min-h-12 flex-1 rounded-xl bg-accent font-semibold text-on-accent"
+          >
+            Looks good, save
+          </button>
+        </div>
+      </Sheet>
+    );
   }
 
   return (
@@ -231,7 +274,7 @@ export default function RecipeEditor({
           </p>
         )}
         <button type="submit" className="min-h-12 w-full rounded-xl bg-accent font-semibold text-on-accent">
-          {existing ? "Save changes" : "Save recipe"}
+          {existing ? "Review changes" : "Review recipe"}
         </button>
       </form>
     </Sheet>

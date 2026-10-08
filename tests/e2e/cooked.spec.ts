@@ -5,7 +5,8 @@ async function addRecipe(page: Page, name: string) {
   await page.getByRole("button", { name: "+ Add recipe" }).click();
   const sheet = page.getByRole("dialog", { name: "New recipe" });
   await sheet.getByLabel("Name").fill(name);
-  await sheet.getByRole("button", { name: "Save recipe" }).click();
+  await sheet.getByRole("button", { name: "Review recipe" }).click();
+  await sheet.getByRole("button", { name: "Looks good, save" }).click();
   await expect(page.getByRole("heading", { name })).toBeVisible();
 }
 
@@ -32,7 +33,8 @@ test("rates, logs cooking with undo, and keeps both through an edit", async ({ p
   await page.getByRole("button", { name: "Edit" }).click();
   const sheet = page.getByRole("dialog", { name: "Edit recipe" });
   await sheet.getByLabel("Name").fill("Rated mushroom risotto");
-  await sheet.getByRole("button", { name: "Save changes" }).click();
+  await sheet.getByRole("button", { name: "Review changes" }).click();
+  await sheet.getByRole("button", { name: "Looks good, save" }).click();
   await expect(page.getByRole("heading", { name: "Rated mushroom risotto" })).toBeVisible();
   await expect(rating.getByRole("button", { name: "4 stars" })).toHaveAttribute("aria-pressed", "true");
   await expect(summary).toHaveText("Cooked once · last made today");

@@ -8,7 +8,8 @@ async function addRecipe(page: Page, fields: { name: string; link?: string; ingr
   if (fields.link) await sheet.getByLabel("Link").fill(fields.link);
   if (fields.ingredients) await sheet.getByLabel("Ingredients").fill(fields.ingredients);
   if (fields.steps) await sheet.getByLabel("Steps").fill(fields.steps);
-  await sheet.getByRole("button", { name: "Save recipe" }).click();
+  await sheet.getByRole("button", { name: "Review recipe" }).click();
+  await sheet.getByRole("button", { name: "Looks good, save" }).click();
 }
 
 test("adds, views, edits, and deletes a recipe", async ({ page }) => {
@@ -16,7 +17,7 @@ test("adds, views, edits, and deletes a recipe", async ({ page }) => {
 
   // The name is the only must.
   await page.getByRole("button", { name: "+ Add recipe" }).click();
-  await page.getByRole("dialog").getByRole("button", { name: "Save recipe" }).click();
+  await page.getByRole("dialog").getByRole("button", { name: "Review recipe" }).click();
   await expect(page.getByText("Give it a name.")).toBeVisible();
   await page.getByRole("dialog").getByRole("button", { name: "Close" }).click();
 
@@ -36,7 +37,8 @@ test("adds, views, edits, and deletes a recipe", async ({ page }) => {
   const sheet = page.getByRole("dialog", { name: "Edit recipe" });
   await expect(sheet.getByLabel("Ingredients")).toHaveValue("2 Tbsp olive oil\n1 1/2 cups diced onion\nsalt to taste");
   await sheet.getByLabel("Name").fill("Roasted tomato soup");
-  await sheet.getByRole("button", { name: "Save changes" }).click();
+  await sheet.getByRole("button", { name: "Review changes" }).click();
+  await sheet.getByRole("button", { name: "Looks good, save" }).click();
   await expect(page.getByRole("heading", { name: "Roasted tomato soup" })).toBeVisible();
 
   await page.getByRole("button", { name: "‹ All recipes" }).click();

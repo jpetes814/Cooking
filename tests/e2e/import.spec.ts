@@ -20,7 +20,9 @@ test("fills a recipe page exactly, then saves it", async ({ page }) => {
   );
   await expect(sheet.getByLabel("Steps")).toHaveValue("Heat the oven to 425°F.\nToss everything on a sheet pan.\nRoast 20 minutes.");
 
-  await sheet.getByRole("button", { name: "Save recipe" }).click();
+  await sheet.getByRole("button", { name: "Review recipe" }).click();
+
+  await sheet.getByRole("button", { name: "Looks good, save" }).click();
   await expect(page.getByRole("heading", { name: "Sheet pan gnocchi" })).toBeVisible();
   await expect(page.getByText("1/2 tsp")).toBeVisible();
 });

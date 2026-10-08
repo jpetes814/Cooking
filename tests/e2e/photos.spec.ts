@@ -22,7 +22,8 @@ async function addRecipeWithPhoto(page: Page, name: string) {
   await sheet.getByLabel("Name").fill(name);
   await sheet.getByLabel("Add photos").setInputFiles({ name: "dish.png", mimeType: "image/png", buffer });
   await expect(sheet.getByRole("img", { name: "New photo" })).toBeVisible();
-  await sheet.getByRole("button", { name: "Save recipe" }).click();
+  await sheet.getByRole("button", { name: "Review recipe" }).click();
+  await sheet.getByRole("button", { name: "Looks good, save" }).click();
   await expect(page.getByRole("heading", { name })).toBeVisible();
 }
 
@@ -49,7 +50,8 @@ test("adds a photo, shows it, opens it full screen, and removes it", async ({ pa
   await page.getByRole("button", { name: "Edit" }).click();
   const sheet = page.getByRole("dialog", { name: "Edit recipe" });
   await sheet.getByRole("button", { name: "Remove photo 1" }).click();
-  await sheet.getByRole("button", { name: "Save changes" }).click();
+  await sheet.getByRole("button", { name: "Review changes" }).click();
+  await sheet.getByRole("button", { name: "Looks good, save" }).click();
   await expect(page.getByRole("button", { name: "Open photo 1" })).toHaveCount(0);
 });
 

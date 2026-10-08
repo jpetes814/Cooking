@@ -35,7 +35,9 @@ test("Claude reads a recipe photo into a draft and suggests tags", async ({ page
   await suggestions.getByRole("button", { name: "Add all" }).click();
   await expect(suggestions).toHaveCount(0);
 
-  await sheet.getByRole("button", { name: "Save recipe" }).click();
+  await sheet.getByRole("button", { name: "Review recipe" }).click();
+
+  await sheet.getByRole("button", { name: "Looks good, save" }).click();
   await expect(page.getByRole("heading", { name: "Lemon garlic pasta" })).toBeVisible();
   await expect(page.getByRole("list", { name: "Tags" })).toContainText("italian");
 });

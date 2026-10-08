@@ -1,10 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { newPhotoId, photosEnabled } from "@/lib/data/photos";
 import { shrinkPhoto } from "@/lib/photos/shrink";
 import type { PhotoEntry } from "@/lib/model/photos";
 import RecipePhoto from "./RecipePhoto";
+import PhotoViewer from "./PhotoViewer";
+import ImageViewer from "./ImageViewer";
+import { useBlobUrl } from "./useBlobUrl";
 
 export interface NewPhoto {
   id: string;
@@ -13,16 +16,13 @@ export interface NewPhoto {
 
 /** Thumbnail for a photo picked in this editor but not saved yet. */
 function NewThumb({ photo }: { photo: NewPhoto }) {
-  const [src, setSrc] = useState<string | null>(null);
-  useEffect(() => {
-    const url = URL.createObjectURL(photo.blob);
-    // Created in the effect so it can be revoked when the thumbnail goes away.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setSrc(url);
-    return () => URL.revokeObjectURL(url);
-  }, [photo.blob]);
+  const src = useBlobUrl(photo.blob);
   // eslint-disable-next-line @next/next/no-img-element -- a local preview, not a hosted image
   return src ? <img src={src} alt="New photo" className="h-full w-full object-cover" /> : null;
+}
+
+function NewPhotoViewer({ photo, onClose }: { photo: NewPhoto; onClose: () => void }) {
+  return <ImageViewer src={useBlobUrl(photo.blob)} alt="New photo" onClose={onClose} />;
 }
 
 /**
@@ -49,6 +49,9 @@ export default function PhotoPicker({
   onRemoveAdded: (id: string) => void;
 }) {
   const [busy, setBusy] = useState(false);
+  const [viewing, setViewing] = useState<string | null>(null);
+  const viewingExisting = existing.find((p) => p.id === viewing);
+  const viewingAdded = added.find((p) => p.id === viewing);
   const [error, setError] = useState<string | null>(null);
 
   if (!photosEnabled()) {
@@ -88,7 +91,9 @@ export default function PhotoPicker({
       <div className="mt-1 flex flex-wrap gap-2">
         {existing.map((p, i) => (
           <div key={p.id} className={thumb}>
-            {recipeId && <RecipePhoto uid={uid} recipeId={recipeId} photo={p} alt={`Photo ${i + 1}`} className="h-full w-full" />}
+            <button type="button" onClick={() => setViewing(p.id)} aria-label={`View photo ${i + 1}`} className="h-full w-full">
+              {recipeId && <RecipePhoto uid={uid} recipeId={recipeId} photo={p} alt={`Photo ${i + 1}`} className="h-full w-full" />}
+            </button>
             <button type="button" aria-label={`Remove photo ${i + 1}`} onClick={() => onRemoveExisting(p.id)} className={removeButton}>
               ×
             </button>
@@ -96,7 +101,9 @@ export default function PhotoPicker({
         ))}
         {added.map((p, i) => (
           <div key={p.id} className={thumb}>
-            <NewThumb photo={p} />
+            <button type="button" onClick={() => setViewing(p.id)} aria-label={`View photo ${existing.length + i + 1}`} className="h-full w-full">
+              <NewThumb photo={p} />
+            </button>
             <button
               type="button"
               aria-label={`Remove photo ${existing.length + i + 1}`}
@@ -131,6 +138,10 @@ export default function PhotoPicker({
       <span className="mt-1 block text-xs text-muted">
         A cookbook page, a screenshot, or the finished dish. Saved on this phone first, then uploaded.
       </span>
+      {viewingExisting && recipeId && (
+        <PhotoViewer uid={uid} recipeId={recipeId} photo={viewingExisting} title="Photo" onClose={() => setViewing(null)} />
+      )}
+      {viewingAdded && <NewPhotoViewer photo={viewingAdded} onClose={() => setViewing(null)} />}
       {error && (
         <p role="alert" className="mt-1 text-sm text-warn">
           {error}
