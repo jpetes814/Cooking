@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { createRecipe, deleteRecipe, logCooked, rateRecipe, unlogCooked, updateRecipe } from "@/lib/data/recipes";
+import { createRecipe, deleteRecipe, logCooked, rateRecipe, saveNextTime, unlogCooked, updateRecipe } from "@/lib/data/recipes";
 import { daysAgo, isFavorite, lastCooked, SORT_LABEL, sortBy, type SortMode } from "@/lib/model/cooking";
 import { useNow } from "@/components/shell/useNow";
 import { queueDeletes, queueUploads } from "@/lib/data/photos";
@@ -69,12 +69,14 @@ export default function RecipesView({ uid, recipes }: { uid: string; recipes: Re
     return (
       <>
         <RecipeDetail
+          key={open.id}
           uid={uid}
           recipe={open}
           onBack={() => setOpenId(null)}
           onRate={(rating) => rateRecipe(uid, open.id, rating)}
           onCooked={(at) => logCooked(uid, open.id, at)}
           onUndoCooked={(at) => unlogCooked(uid, open.id, at)}
+          onNextTime={(text) => saveNextTime(uid, open.id, text)}
           onTag={(tag) => {
             setQuery("");
             setPicked([tag]);

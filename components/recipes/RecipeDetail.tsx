@@ -7,6 +7,7 @@ import RecipePhoto from "./RecipePhoto";
 import PhotoViewer from "./PhotoViewer";
 import { TagLabel } from "./TagPicker";
 import CookedPanel from "./CookedPanel";
+import NextTimeNotes from "./NextTimeNotes";
 
 /** One recipe, readable while cooking. */
 export default function RecipeDetail({
@@ -19,6 +20,7 @@ export default function RecipeDetail({
   onRate,
   onCooked,
   onUndoCooked,
+  onNextTime,
 }: {
   uid: string;
   recipe: Recipe;
@@ -30,8 +32,10 @@ export default function RecipeDetail({
   onRate: (rating: number | null) => void;
   onCooked: (at: number) => void;
   onUndoCooked: (at: number) => void;
+  onNextTime: (text: string) => void;
 }) {
   const [confirming, setConfirming] = useState(false);
+  const [editingNote, setEditingNote] = useState(false);
   const [viewing, setViewing] = useState<string | null>(null);
   const photos = sortedPhotos(recipe.photos);
   const viewed = photos.find((p) => p.id === viewing) ?? null;
@@ -108,7 +112,21 @@ export default function RecipeDetail({
         )}
       </header>
 
-      <CookedPanel recipe={recipe} onRate={onRate} onCooked={onCooked} onUndoCooked={onUndoCooked} />
+      <CookedPanel
+        recipe={recipe}
+        onRate={onRate}
+        onCooked={onCooked}
+        onUndoCooked={onUndoCooked}
+        onNextTime={() => setEditingNote(true)}
+      />
+
+      <NextTimeNotes
+        text={recipe.nextTime ?? ""}
+        pending={recipe.pending}
+        editing={editingNote}
+        onEditing={setEditingNote}
+        onSave={onNextTime}
+      />
 
       {recipe.ingredients.length > 0 && (
         <section>

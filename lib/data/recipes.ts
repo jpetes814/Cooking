@@ -61,3 +61,8 @@ export function unlogCooked(uid: string, id: string, at: number) {
 export function deleteRecipe(uid: string, id: string) {
   deleteDoc(doc(db(), path(uid), id)).catch(reportFailure("deleting the recipe"));
 }
+
+/** "Next time" notes, saved on their own so an edit in the editor never overwrites them. */
+export function saveNextTime(uid: string, id: string, text: string) {
+  updateDoc(doc(db(), path(uid), id), { nextTime: text }).catch(reportFailure("saving your note"));
+}
