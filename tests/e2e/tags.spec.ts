@@ -7,7 +7,8 @@ async function addTagged(page: Page, name: string, ingredients: string, addTags:
   await sheet.getByLabel("Name").fill(name);
   await sheet.getByLabel("Ingredients").fill(ingredients);
   await addTags(sheet);
-  await sheet.getByRole("button", { name: "Save recipe" }).click();
+  await sheet.getByRole("button", { name: "Review recipe" }).click();
+  await sheet.getByRole("button", { name: "Looks good, save" }).click();
   await expect(page.getByRole("heading", { name })).toBeVisible();
   await page.getByRole("button", { name: "‹ All recipes" }).click();
 }
