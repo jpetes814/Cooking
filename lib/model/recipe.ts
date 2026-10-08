@@ -36,6 +36,10 @@ export interface RecipeDoc {
   notes: string;
   /** Keyed by photo id. Missing on recipes saved before photos existed. */
   photos?: PhotoMap;
+  /** 1 to 5 stars, or null when not rated. Changed on its own, never by the editor. */
+  rating?: number | null;
+  /** When it was cooked (ms), oldest first. Changed on its own, never by the editor. */
+  cooked?: number[];
   createdAt: number;
   updatedAt: number;
 }
@@ -289,6 +293,24 @@ export function buildRecipe(input: RecipeInput, now: number, existing?: RecipeDo
       createdAt: existing?.createdAt ?? now,
       updatedAt: now,
     },
+  };
+}
+
+/**
+ * The fields the editor owns. Saving an edit writes only these, so a rating or
+ * "cooked it" tap made meanwhile (on this phone or another) is never undone.
+ */
+export function editableFields(r: RecipeDoc) {
+  return {
+    title: r.title,
+    source: r.source,
+    servings: r.servings,
+    ingredients: r.ingredients,
+    steps: r.steps,
+    tags: r.tags,
+    notes: r.notes,
+    photos: r.photos ?? {},
+    updatedAt: r.updatedAt,
   };
 }
 

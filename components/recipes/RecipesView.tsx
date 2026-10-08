@@ -1,7 +1,9 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { createRecipe, deleteRecipe, updateRecipe } from "@/lib/data/recipes";
+import { createRecipe, deleteRecipe, logCooked, rateRecipe, unlogCooked, updateRecipe } from "@/lib/data/recipes";
+import { daysAgo, isFavorite, lastCooked, SORT_LABEL, sortBy, type SortMode } from "@/lib/model/cooking";
+import { useNow } from "@/components/shell/useNow";
 import { queueDeletes, queueUploads } from "@/lib/data/photos";
 import { parseLink, SITE_LABEL, type Recipe, type RecipeDoc } from "@/lib/model/recipe";
 import { applyPhotoEdits, coverPhoto, photoPath, sortedPhotos } from "@/lib/model/photos";
@@ -24,8 +26,14 @@ export default function RecipesView({ uid, recipes }: { uid: string; recipes: Re
 
   const counts = useMemo(() => tagCounts(recipes), [recipes]);
   const usedTags = useMemo(() => counts.map((c) => c.tag).filter((t) => recipes.some((r) => r.tags.includes(t))), [counts, recipes]);
-  const shown = useMemo(() => filterRecipes(recipes, { query, tags: picked }), [recipes, query, picked]);
-  const filtering = query.trim() !== "" || picked.length > 0;
+  const [sort, setSort] = useState<SortMode>("newest");
+  const [favorites, setFavorites] = useState(false);
+  const now = useNow();
+  const shown = useMemo(() => {
+    const matched = filterRecipes(recipes, { query, tags: picked });
+    return sortBy(favorites ? matched.filter(isFavorite) : matched, sort);
+  }, [recipes, query, picked, favorites, sort]);
+  const filtering = query.trim() !== "" || picked.length > 0 || favorites;
   const seasonTag = `season/${currentSeason(new Date())}`;
   // Filter chips: what's in season first, then your most used tags and groups.
   const chips = [seasonTag, ...counts.map((c) => c.tag).filter((t) => t !== seasonTag)].slice(0, 16);
@@ -64,6 +72,9 @@ export default function RecipesView({ uid, recipes }: { uid: string; recipes: Re
           uid={uid}
           recipe={open}
           onBack={() => setOpenId(null)}
+          onRate={(rating) => rateRecipe(uid, open.id, rating)}
+          onCooked={(at) => logCooked(uid, open.id, at)}
+          onUndoCooked={(at) => unlogCooked(uid, open.id, at)}
           onTag={(tag) => {
             setQuery("");
             setPicked([tag]);
@@ -115,6 +126,16 @@ export default function RecipesView({ uid, recipes }: { uid: string; recipes: Re
               className="block min-h-12 w-full rounded-xl border border-border bg-surface px-3 text-base outline-none focus:border-accent"
             />
             <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1" role="group" aria-label="Filter by tag">
+              <button
+                type="button"
+                aria-pressed={favorites}
+                onClick={() => setFavorites((f) => !f)}
+                className={`min-h-10 shrink-0 rounded-full border px-3 text-sm ${
+                  favorites ? "border-accent bg-accent-soft font-semibold text-accent" : "border-border bg-surface"
+                }`}
+              >
+                ★ Favorites
+              </button>
               {chips.map((t) => {
                 const on = picked.includes(t);
                 const label = t === seasonTag ? `In season: ${tagLeaf(t)}` : null;
@@ -133,23 +154,39 @@ export default function RecipesView({ uid, recipes }: { uid: string; recipes: Re
                 );
               })}
             </div>
-            {filtering && (
-              <p className="flex items-center justify-between text-sm text-muted">
-                <span>
-                  {shown.length} of {recipes.length} recipes
-                </span>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setQuery("");
-                    setPicked([]);
-                  }}
-                  className="min-h-10 px-2 font-medium text-accent"
+            <div className="flex items-center justify-between gap-2 text-sm text-muted">
+              <span>
+                {filtering ? `${shown.length} of ${recipes.length} recipes` : `${recipes.length} recipes`}
+                {filtering && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setQuery("");
+                      setPicked([]);
+                      setFavorites(false);
+                    }}
+                    className="ml-1 min-h-10 px-2 font-medium text-accent"
+                  >
+                    Clear
+                  </button>
+                )}
+              </span>
+              <label className="flex items-center gap-1">
+                <span>Sort</span>
+                <select
+                  value={sort}
+                  onChange={(e) => setSort(e.target.value as SortMode)}
+                  aria-label="Sort recipes"
+                  className="min-h-10 rounded-lg border border-border bg-surface px-2 text-sm text-text"
                 >
-                  Clear
-                </button>
-              </p>
-            )}
+                  {(Object.keys(SORT_LABEL) as SortMode[]).map((m) => (
+                    <option key={m} value={m}>
+                      {SORT_LABEL[m]}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
           </div>
 
           {shown.length === 0 ? (
@@ -165,6 +202,8 @@ export default function RecipesView({ uid, recipes }: { uid: string; recipes: Re
                   r.ingredients.length ? `${r.ingredients.length} ingredient${r.ingredients.length === 1 ? "" : "s"}` : null,
                   link?.ok ? SITE_LABEL[link.site] : null,
                   photoCount ? `${photoCount} photo${photoCount === 1 ? "" : "s"}` : null,
+                  r.rating ? `${"★".repeat(r.rating)}` : null,
+                  lastCooked(r) !== null ? `made ${daysAgo(lastCooked(r)!, now)}` : null,
                 ].filter(Boolean);
                 const cover = coverPhoto(r.photos);
                 return (

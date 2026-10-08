@@ -124,6 +124,18 @@ describe("recipes", () => {
     await assertSucceeds(updateDoc(doc(as(ME), "users/me/recipes/r1"), { "photos.p1": { path: "x", url: null, addedAt: 1 } }));
   });
 
+  it("takes ratings from 1 to 5, a cleared rating, and a cooked log", async () => {
+    const ref = doc(as(ME), "users/me/recipes/r1");
+    await assertSucceeds(updateDoc(ref, { rating: 5 }));
+    await assertSucceeds(updateDoc(ref, { rating: null }));
+    await assertSucceeds(updateDoc(ref, { cooked: [1, 2, 3] }));
+    await assertFails(updateDoc(ref, { rating: 6 }));
+    await assertFails(updateDoc(ref, { rating: 0 }));
+    await assertFails(updateDoc(ref, { rating: 4.5 }));
+    await assertFails(updateDoc(ref, { cooked: "yesterday" }));
+    await assertFails(updateDoc(ref, { cooked: Array.from({ length: 201 }, (_, i) => i) }));
+  });
+
   it("editing can't change when it was first saved", async () => {
     await assertFails(updateDoc(doc(as(ME), "users/me/recipes/r1"), { createdAt: 99, updatedAt: 2 }));
   });
