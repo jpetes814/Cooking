@@ -50,19 +50,19 @@ test("rates, logs cooking with undo, and keeps both through an edit", async ({ p
   await page.getByRole("group", { name: "Rating" }).getByRole("button", { name: "2 stars" }).click();
   await page.getByRole("button", { name: "‹ All recipes" }).click();
 
-  const risotto = page.getByRole("button", { name: /Rated mushroom risotto/ });
+  const risotto = page.getByRole("list", { name: "Your recipes" }).getByRole("button", { name: /Rated mushroom risotto/ });
   await expect(risotto).toContainText("★★★★★");
   await expect(risotto).toContainText("made today");
 
   await page.getByLabel("Search recipes").fill("rated");
   await page.getByRole("button", { name: "★ Favorites" }).click();
-  await expect(page.getByRole("button", { name: /^Rated / })).toHaveCount(1);
+  await expect(page.getByRole("list", { name: "Your recipes" }).getByRole("button", { name: /^Rated / })).toHaveCount(1);
   await page.getByRole("button", { name: "★ Favorites" }).click();
 
   await page.getByLabel("Sort recipes").selectOption("rating");
-  await expect(page.getByRole("button", { name: /^Rated / }).first()).toContainText("Rated mushroom risotto");
+  await expect(page.getByRole("list", { name: "Your recipes" }).getByRole("button", { name: /^Rated / }).first()).toContainText("Rated mushroom risotto");
   await page.getByLabel("Sort recipes").selectOption("stale");
-  await expect(page.getByRole("button", { name: /^Rated / }).first()).toContainText("Rated plain toast");
+  await expect(page.getByRole("list", { name: "Your recipes" }).getByRole("button", { name: /^Rated / }).first()).toContainText("Rated plain toast");
 });
 
 test("ratings and cooking work offline and sync later", async ({ page, context }) => {
@@ -113,12 +113,12 @@ test("logs a past cook and keeps a note for next time through an edit", async ({
   await expect(page.getByTestId("next-time")).toHaveText("Less sugar, more lime.");
 
   await page.reload();
-  await page.getByRole("button", { name: /Past pad thai/ }).click();
+  await page.getByRole("list", { name: "Your recipes" }).getByRole("button", { name: /Past pad thai/ }).click();
   await expect(page.getByTestId("next-time")).toHaveText("Less sugar, more lime.");
   await expect(summary).toHaveText("Cooked once · last made today");
 
   // Find it by what you wrote.
   await page.getByRole("button", { name: "‹ All recipes" }).click();
   await page.getByLabel("Search recipes").fill("lime");
-  await expect(page.getByRole("button", { name: /Past pad thai/ })).toBeVisible();
+  await expect(page.getByRole("list", { name: "Your recipes" }).getByRole("button", { name: /Past pad thai/ })).toBeVisible();
 });

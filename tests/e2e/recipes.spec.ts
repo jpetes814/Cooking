@@ -42,12 +42,12 @@ test("adds, views, edits, and deletes a recipe", async ({ page }) => {
   await expect(page.getByRole("heading", { name: "Roasted tomato soup" })).toBeVisible();
 
   await page.getByRole("button", { name: "‹ All recipes" }).click();
-  await expect(page.getByRole("button", { name: /Roasted tomato soup/ })).toContainText("3 ingredients");
+  await expect(page.getByRole("list", { name: "Your recipes" }).getByRole("button", { name: /Roasted tomato soup/ })).toContainText("3 ingredients");
 
-  await page.getByRole("button", { name: /Roasted tomato soup/ }).click();
+  await page.getByRole("list", { name: "Your recipes" }).getByRole("button", { name: /Roasted tomato soup/ }).click();
   await page.getByRole("button", { name: "Delete recipe" }).click();
   await page.getByRole("button", { name: "Yes, delete" }).click();
-  await expect(page.getByRole("button", { name: /Roasted tomato soup/ })).toHaveCount(0);
+  await expect(page.getByRole("list", { name: "Your recipes" }).getByRole("button", { name: /Roasted tomato soup/ })).toHaveCount(0);
 });
 
 test("saves a video link with just a name", async ({ page }) => {
@@ -57,7 +57,7 @@ test("saves a video link with just a name", async ({ page }) => {
   await expect(watch).toHaveAttribute("href", "https://tiktok.com/@somecook/video/123");
   await expect(page.getByText("Just the link for now.")).toBeVisible();
   await page.getByRole("button", { name: "‹ All recipes" }).click();
-  await expect(page.getByRole("button", { name: /Viral feta pasta/ })).toContainText("TikTok");
+  await expect(page.getByRole("list", { name: "Your recipes" }).getByRole("button", { name: /Viral feta pasta/ })).toContainText("TikTok");
 });
 
 test("a recipe added offline waits, then syncs", async ({ page, context }) => {

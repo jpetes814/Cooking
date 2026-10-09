@@ -15,8 +15,18 @@ Being built in small steps, each one a pull request you can test on your phone b
 5. Recipe photos
 6. Tags, sub-tags, and search
 7. Claude reads a recipe photo and suggests tags
-8. Shopping trips: one merged list for several recipes
-9. "Use it up": recipes that share what you're already buying
+8. Star ratings and a "cooked it" log
+9. Check a recipe over before saving it
+10. Past cooks and notes for next time
+11. Ideas for tonight, with optional local weather
+12. Find new recipes on the web, like the ones you love
+13. Shopping trips: one merged list for several recipes
+14. "Use it up": recipes that share what you're already buying
+15. Backup and copy between the test and real app
+
+## Ideas for tonight and your location
+
+Ideas for tonight are picked on your phone from your own recipes. If you tap **Use local weather**, the phone asks for your location once, rounds it to about 10 km, and sends only those rounded numbers to [Open-Meteo](https://open-meteo.com) for the current weather. Nothing goes to our server or into your recipes. The last reading stays on the phone so ideas still work with no signal, and **Turn off weather** forgets it.
 
 ## Docs
 
