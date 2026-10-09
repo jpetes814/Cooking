@@ -40,17 +40,19 @@ export function parseQuery(query: string): string[] {
 }
 
 /** Everything searchable about a recipe, normalized once. */
-export function searchText(r: Pick<RecipeDoc, "title" | "tags" | "ingredients" | "notes">): string {
-  return ` ${normalize([r.title, r.tags.join(" ").replace(/\//g, " "), r.ingredients.map((i) => i.name).join(" "), r.notes].join(" "))} `;
+type Searchable = Pick<RecipeDoc, "title" | "tags" | "ingredients" | "notes" | "nextTime">;
+
+export function searchText(r: Searchable): string {
+  return ` ${normalize([r.title, r.tags.join(" ").replace(/\//g, " "), r.ingredients.map((i) => i.name).join(" "), r.notes, r.nextTime ?? ""].join(" "))} `;
 }
 
-export function matchesFilter(r: Pick<RecipeDoc, "title" | "tags" | "ingredients" | "notes">, filter: RecipeFilter, text = searchText(r)): boolean {
+export function matchesFilter(r: Searchable, filter: RecipeFilter, text = searchText(r)): boolean {
   if (!filter.tags.every((f) => r.tags.some((t) => tagMatches(f, t)))) return false;
   // Matches the start of a word, so results update usefully while typing ("tom" finds "tomato").
   return parseQuery(filter.query).every((term) => text.includes(` ${term}`));
 }
 
-export function filterRecipes<T extends Pick<RecipeDoc, "title" | "tags" | "ingredients" | "notes">>(list: readonly T[], filter: RecipeFilter): T[] {
+export function filterRecipes<T extends Searchable>(list: readonly T[], filter: RecipeFilter): T[] {
   if (!filter.query.trim() && filter.tags.length === 0) return [...list];
   return list.filter((r) => matchesFilter(r, filter));
 }

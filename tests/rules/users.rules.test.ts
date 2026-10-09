@@ -136,6 +136,14 @@ describe("recipes", () => {
     await assertFails(updateDoc(ref, { cooked: Array.from({ length: 201 }, (_, i) => i) }));
   });
 
+  it("takes notes for next time up to 2000 characters", async () => {
+    const ref = doc(as(ME), "users/me/recipes/r1");
+    await assertSucceeds(updateDoc(ref, { nextTime: "Less chili, more lime." }));
+    await assertSucceeds(updateDoc(ref, { nextTime: "x".repeat(2000) }));
+    await assertFails(updateDoc(ref, { nextTime: "x".repeat(2001) }));
+    await assertFails(updateDoc(ref, { nextTime: 5 }));
+  });
+
   it("editing can't change when it was first saved", async () => {
     await assertFails(updateDoc(doc(as(ME), "users/me/recipes/r1"), { createdAt: 99, updatedAt: 2 }));
   });

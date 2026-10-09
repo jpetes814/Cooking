@@ -81,6 +81,11 @@ describe("search", () => {
     expect(filterRecipes(all, { query: "bread", tags: [] })).toEqual([salad]);
   });
 
+  it("finds notes for next time", () => {
+    const tweaked = { ...curry, nextTime: "Add more basil" };
+    expect(filterRecipes([soup, tweaked], { query: "basil", tags: [] })).toEqual([tweaked]);
+  });
+
   it("needs every ingredient asked for", () => {
     expect(filterRecipes(all, { query: "chicken lemon", tags: [] })).toEqual([salad]);
     expect(filterRecipes(all, { query: "chicken", tags: [] })).toEqual([curry, salad]);

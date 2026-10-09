@@ -40,6 +40,8 @@ export interface RecipeDoc {
   rating?: number | null;
   /** When it was cooked (ms), oldest first. Changed on its own, never by the editor. */
   cooked?: number[];
+  /** What to change next time. Changed on its own, never by the editor. */
+  nextTime?: string;
   createdAt: number;
   updatedAt: number;
 }

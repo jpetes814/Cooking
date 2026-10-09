@@ -79,3 +79,46 @@ test("ratings and cooking work offline and sync later", async ({ page, context }
   await context.setOffline(false);
   await expect(page.getByTestId("status-line")).toContainText("Synced");
 });
+
+test("logs a past cook and keeps a note for next time through an edit", async ({ page }) => {
+  await signIn(page, TESTER);
+  await addRecipe(page, "Past pad thai");
+  const summary = page.getByTestId("cooked-summary");
+
+  // A cook from before the app, a week ago by default.
+  await page.getByRole("button", { name: "I made this before" }).click();
+  await page.getByRole("button", { name: "Add date" }).click();
+  await expect(summary).toHaveText("Cooked once · last made 7 days ago");
+
+  await page.getByRole("button", { name: "Show dates" }).click();
+  const dates = page.getByRole("list", { name: "Times you made it" });
+  await expect(dates.getByRole("listitem")).toHaveCount(1);
+  await dates.getByRole("button", { name: /^Remove / }).click();
+  await expect(summary).toHaveText("Not cooked yet");
+
+  // After cooking, it asks what to change.
+  await page.getByRole("button", { name: "Cooked it" }).click();
+  await page.getByRole("button", { name: "Anything to change next time?" }).click();
+  const note = page.getByRole("region", { name: "Next time" });
+  await note.getByRole("textbox").fill("Less sugar, more lime.");
+  await note.getByRole("button", { name: "Save note" }).click();
+  await expect(page.getByTestId("next-time")).toHaveText("Less sugar, more lime.");
+
+  // Editing the recipe never touches the note.
+  await page.getByRole("button", { name: "Edit", exact: true }).click();
+  const sheet = page.getByRole("dialog", { name: "Edit recipe" });
+  await sheet.getByLabel("Notes").fill("From a street stall.");
+  await sheet.getByRole("button", { name: "Review changes" }).click();
+  await sheet.getByRole("button", { name: "Looks good, save" }).click();
+  await expect(page.getByTestId("next-time")).toHaveText("Less sugar, more lime.");
+
+  await page.reload();
+  await page.getByRole("button", { name: /Past pad thai/ }).click();
+  await expect(page.getByTestId("next-time")).toHaveText("Less sugar, more lime.");
+  await expect(summary).toHaveText("Cooked once · last made today");
+
+  // Find it by what you wrote.
+  await page.getByRole("button", { name: "‹ All recipes" }).click();
+  await page.getByLabel("Search recipes").fill("lime");
+  await expect(page.getByRole("button", { name: /Past pad thai/ })).toBeVisible();
+});

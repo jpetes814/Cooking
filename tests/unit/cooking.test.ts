@@ -1,5 +1,18 @@
 import { describe, expect, it } from "vitest";
-import { cookedSummary, daysAgo, isFavorite, lastCooked, nextRating, sortBy } from "@/lib/model/cooking";
+import {
+  cookedLog,
+  cookedSummary,
+  daysAgo,
+  defaultPastDate,
+  isFavorite,
+  lastCooked,
+  MAX_NEXT_TIME,
+  nextRating,
+  pastCookDate,
+  sortBy,
+  tidyNextTime,
+  toDateInput,
+} from "@/lib/model/cooking";
 import { buildRecipe, editableFields } from "@/lib/model/recipe";
 
 const NOW = new Date(2026, 9, 4, 18, 0).getTime();
@@ -64,5 +77,42 @@ describe("editableFields", () => {
     expect(fields).not.toHaveProperty("cooked");
     expect(fields).not.toHaveProperty("createdAt");
     expect(fields.title).toBe("Soup");
+  });
+});
+
+describe("I made this before", () => {
+  it("suggests a week ago", () => {
+    expect(defaultPastDate(NOW)).toBe("2026-09-27");
+    expect(toDateInput(NOW)).toBe("2026-10-04");
+  });
+
+  it("logs noon on the picked day, and today never lands in the future", () => {
+    expect(pastCookDate("2026-09-27", NOW)).toEqual({ ok: true, at: new Date(2026, 8, 27, 12).getTime() });
+    const morning = new Date(2026, 9, 4, 8, 0).getTime();
+    expect(pastCookDate("2026-10-04", morning)).toEqual({ ok: true, at: morning });
+  });
+
+  it("refuses empty, made-up, and future dates", () => {
+    expect(pastCookDate("", NOW).ok).toBe(false);
+    expect(pastCookDate("2026-02-30", NOW).ok).toBe(false);
+    expect(pastCookDate("2026-10-05", NOW)).toEqual({ ok: false, error: "That date hasn't happened yet." });
+  });
+
+  it("lists the log newest first without repeats", () => {
+    expect(cookedLog({ cooked: [3, 9, 1, 9] })).toEqual([9, 3, 1]);
+    expect(cookedLog({})).toEqual([]);
+  });
+});
+
+describe("notes for next time", () => {
+  it("trims and keeps within the limit", () => {
+    expect(tidyNextTime("  less salt \n")).toBe("less salt");
+    expect(tidyNextTime("x".repeat(2500))).toHaveLength(MAX_NEXT_TIME);
+  });
+
+  it("are never part of an edit", () => {
+    const built = buildRecipe({ title: "Soup", url: "", servings: "", ingredients: "", steps: "", notes: "" }, NOW);
+    if (!built.ok) throw new Error(built.error);
+    expect(editableFields({ ...built.recipe, nextTime: "more lime" })).not.toHaveProperty("nextTime");
   });
 });
