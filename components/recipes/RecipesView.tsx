@@ -8,6 +8,7 @@ import { queueDeletes, queueUploads } from "@/lib/data/photos";
 import { parseLink, SITE_LABEL, type Recipe, type RecipeDoc } from "@/lib/model/recipe";
 import { applyPhotoEdits, coverPhoto, photoPath, sortedPhotos } from "@/lib/model/photos";
 import IdeasCard from "./IdeasCard";
+import WhatCanIMake from "./WhatCanIMake";
 import RecipeDetail from "./RecipeDetail";
 import RecipeEditor, { type PhotoEdits } from "./RecipeEditor";
 import RecipePhoto from "./RecipePhoto";
@@ -18,8 +19,9 @@ import { currentSeason, tagCounts, tagLeaf } from "@/lib/search/tags";
 type Editing = { mode: "new" } | { mode: "edit"; recipe: Recipe } | null;
 
 /** The Recipes tab: your list, one recipe at a time, and the editor. */
-export default function RecipesView({ uid, recipes }: { uid: string; recipes: Recipe[] }) {
+export default function RecipesView({ uid, recipes, staples }: { uid: string; recipes: Recipe[]; staples: string[] }) {
   const [openId, setOpenId] = useState<string | null>(null);
+  const [making, setMaking] = useState(false);
   const [editing, setEditing] = useState<Editing>(null);
   const [query, setQuery] = useState("");
   const [picked, setPicked] = useState<string[]>([]);
@@ -119,6 +121,15 @@ export default function RecipesView({ uid, recipes }: { uid: string; recipes: Re
       ) : (
         <>
           {!filtering && recipes.length >= 3 && <IdeasCard uid={uid} recipes={recipes} now={now} onOpen={setOpenId} />}
+          {!filtering && (
+            <button
+              type="button"
+              onClick={() => setMaking(true)}
+              className="flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl border border-accent bg-accent-soft font-semibold text-accent"
+            >
+              <span aria-hidden>🥕</span> What can I make?
+            </button>
+          )}
           <div className="space-y-2">
             <input
               type="search"
@@ -239,6 +250,17 @@ export default function RecipesView({ uid, recipes }: { uid: string; recipes: Re
         </>
       )}
       {editor}
+      {making && (
+        <WhatCanIMake
+          recipes={recipes}
+          staples={staples}
+          onClose={() => setMaking(false)}
+          onOpen={(id) => {
+            setMaking(false);
+            setOpenId(id);
+          }}
+        />
+      )}
     </div>
   );
 }

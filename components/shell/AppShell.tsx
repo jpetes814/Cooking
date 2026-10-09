@@ -77,7 +77,7 @@ function SignedIn({ uid, email }: { uid: string; email: string }) {
             (recipes.status === "loading" ? (
               <p className="py-6 text-center text-sm text-muted">Loading...</p>
             ) : (
-              <RecipesView uid={uid} recipes={recipes.recipes} />
+              <RecipesView uid={uid} recipes={recipes.recipes} staples={pantry.status === "loading" ? [] : pantry.items} />
             ))}
           {tab === "pantry" &&
             (pantry.status === "loading" ? (
