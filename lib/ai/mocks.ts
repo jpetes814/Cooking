@@ -19,7 +19,7 @@ export function mockExtract(text: string): ExtractedRecipe {
     ingredients: ["200 g spaghetti", "2 lemons", "3 cloves garlic, sliced", "2 Tbsp olive oil", "salt to taste"],
     steps: ["Boil the pasta in salted water.", "Sizzle the garlic in the oil.", "Toss everything with lemon juice and zest."],
     notes: "Add chili flakes if you like heat.",
-    suggestedTags: ["dish/pasta", "effort/quick", "cuisine/italian"],
+    suggestedTags: ["dish/pasta", "time/under-30-min", "effort/easy", "cuisine/italian", "method/stovetop"],
   };
 }
 
@@ -32,6 +32,7 @@ const JSONLD_PAGE = `<!doctype html><html><head><title>Sheet pan gnocchi | A sam
       "@type": "Recipe",
       name: "Sheet pan gnocchi",
       recipeYield: ["4", "4 servings"],
+      totalTime: "PT25M",
       recipeIngredient: ["1 lb shelf-stable gnocchi", "1 pint cherry tomatoes", "2 Tbsp olive oil", "1/2 tsp salt"],
       recipeInstructions: [
         { "@type": "HowToStep", text: "Heat the oven to 425&deg;F." },

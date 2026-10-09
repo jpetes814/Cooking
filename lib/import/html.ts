@@ -1,3 +1,4 @@
+import { timeTag } from "@/lib/search/tags";
 import type { ImportDraft } from "./draft";
 
 /**
@@ -99,6 +100,23 @@ function jsonLdBlocks(html: string): Json[] {
 }
 
 /** The recipe a page describes, or null if it doesn't use schema.org markup. */
+/** schema.org durations like "PT1H30M" or "P0DT45M" in minutes, or null. */
+export function parseDuration(v: unknown): number | null {
+  if (typeof v !== "string") return null;
+  const m = v.trim().match(/^P(?:(\d+)D)?(?:T(?:(\d+)H)?(?:(\d+)M)?(?:\d+S)?)?$/i);
+  if (!m) return null;
+  const total = Number(m[1] ?? 0) * 1440 + Number(m[2] ?? 0) * 60 + Number(m[3] ?? 0);
+  return total > 0 ? total : null;
+}
+
+/** Total time from the page: totalTime, or prep plus cook. */
+function totalMinutes(node: Record<string, unknown>): number | null {
+  const total = parseDuration(node.totalTime);
+  if (total) return total;
+  const parts = [parseDuration(node.prepTime), parseDuration(node.cookTime)].filter((n): n is number => n !== null);
+  return parts.length ? parts.reduce((a, b) => a + b, 0) : null;
+}
+
 export function recipeFromHtml(html: string): ImportDraft | null {
   const node = findRecipeNode(jsonLdBlocks(html));
   if (!node) return null;
@@ -108,13 +126,14 @@ export function recipeFromHtml(html: string): ImportDraft | null {
   const steps = parseInstructions(node.recipeInstructions);
   const title = text(node.name);
   if (!title && ingredients.length === 0) return null;
+  const minutes = totalMinutes(node);
   return {
     title,
     servings: parseYield(node.recipeYield),
     ingredients,
     steps,
     notes: "",
-    suggestedTags: [],
+    suggestedTags: minutes ? [timeTag(minutes)] : [],
   };
 }
 

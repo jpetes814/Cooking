@@ -1,10 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { parseIngredient } from "@/lib/model/recipe";
-import { matchRecipe, MAX_HAVE, missingText, splitHave, whatCanIMake, type Matchable } from "@/lib/suggest/have";
+import { fitsFilters, matchRecipe, MAX_HAVE, missingText, NO_FILTERS, splitHave, whatCanIMake, type Matchable } from "@/lib/suggest/have";
 
 const recipe = (title: string, lines: string[], extra: Partial<Matchable> = {}): Matchable => ({
   title,
   ingredients: lines.map(parseIngredient),
+  tags: [],
   rating: null,
   updatedAt: 1,
   ...extra,
@@ -57,5 +58,23 @@ describe("what can I make", () => {
     expect(missingText([])).toBe("you have everything");
     expect(missingText(["feta", "dill"])).toBe("missing 2: feta, dill");
     expect(missingText(["a", "b", "c", "d", "e"])).toBe("missing 5: a, b, c and 2 more");
+  });
+
+  it("narrows by how it's cooked, how long it takes, and how hard it is", () => {
+    const fast = recipe("Air fryer wings", ["2 lb chicken wings"], { tags: ["method/air-fryer", "time/under-30-min", "effort/easy"] });
+    const slow = recipe("Braised chicken", ["4 chicken thighs"], { tags: ["method/oven", "time/over-an-hour", "effort/medium"] });
+    const old = recipe("Chicken stew", ["1 lb chicken"], { tags: ["effort/slow-cooker", "effort/weeknight"] });
+    const plain = recipe("Chicken salad", ["2 cups chicken"]);
+    const list = [fast, slow, old, plain];
+    const titles = (f: Partial<typeof NO_FILTERS>) => whatCanIMake(list, ["chicken"], [], { ...NO_FILTERS, ...f }).map((m) => m.recipe.title).sort();
+    expect(titles({})).toHaveLength(4);
+    expect(titles({ method: "air-fryer" })).toEqual(["Air fryer wings"]);
+    // Tags saved before methods existed still count.
+    expect(titles({ method: "slow-cooker" })).toEqual(["Chicken stew"]);
+    expect(titles({ time: 30 })).toEqual(["Air fryer wings"]);
+    expect(titles({ time: 60 })).toEqual(["Air fryer wings", "Chicken stew"]);
+    expect(titles({ easy: true })).toEqual(["Air fryer wings"]);
+    expect(titles({ method: "oven", time: 30 })).toEqual([]);
+    expect(fitsFilters([], NO_FILTERS)).toBe(true);
   });
 });

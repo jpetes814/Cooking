@@ -87,3 +87,52 @@ test("finds new recipes on the web and saves one after checking it", async ({ pa
   await editor.getByRole("button", { name: "Looks good, save" }).click();
   await expect(page.getByRole("heading", { name: "Sheet pan gnocchi" })).toBeVisible();
 });
+
+test("narrows by cooking method, time, and effort, here and on the web", async ({ page }) => {
+  await signIn(page, COOK);
+  await page.getByRole("button", { name: "+ Add recipe" }).click();
+  const editor = page.getByRole("dialog", { name: "New recipe" });
+  await editor.getByLabel("Name").fill("Air fryer chicken bites");
+  await editor.getByLabel("Ingredients").fill("1 lb chicken breast\n1 tsp paprika");
+  await editor.getByRole("button", { name: "Show tag ideas" }).click();
+  for (const tag of ["method/air-fryer", "time/under-30-min", "effort/easy"]) {
+    await editor.getByRole("button", { name: `Add tag ${tag}` }).click();
+  }
+  await editor.getByRole("button", { name: "Review recipe" }).click();
+  await editor.getByRole("button", { name: "Looks good, save" }).click();
+  await page.getByRole("button", { name: "‹ All recipes" }).click();
+
+  await page.getByRole("button", { name: "What can I make?" }).click();
+  const sheet = page.getByRole("dialog", { name: "What can I make?" });
+  if (await sheet.getByRole("button", { name: "Clear" }).isVisible()) await sheet.getByRole("button", { name: "Clear" }).click();
+  await sheet.getByLabel("What do you have?").fill("chicken");
+  await sheet.getByRole("button", { name: "Add", exact: true }).click();
+  const results = sheet.getByRole("list", { name: "Recipes you could make" }).getByRole("listitem");
+  await expect(results).toHaveCount(2); // the bites, and the untagged traybake from earlier
+
+  await sheet.getByRole("button", { name: "Cooking method, time, and effort" }).click();
+  const methods = sheet.getByRole("group", { name: "How do you want to cook it?" });
+  const time = sheet.getByRole("group", { name: "How long do you have?" });
+  await methods.getByRole("button", { name: "air fryer" }).click();
+  await expect(results).toHaveCount(1);
+  await expect(results.first()).toContainText("Air fryer chicken bites");
+  await time.getByRole("button", { name: "Under 30 min" }).click();
+  await time.getByRole("button", { name: "Easy only" }).click();
+  await expect(results).toHaveCount(1);
+
+  await methods.getByRole("button", { name: "oven" }).click();
+  await expect(sheet.getByText("None of your recipes match with these filters")).toBeVisible();
+
+  // Remembered, and sent along with the web search.
+  await page.reload();
+  await page.getByRole("button", { name: "What can I make?" }).click();
+  await expect(sheet.getByRole("button", { name: /Cooking method, time, and effort · on/ })).toBeVisible();
+  await expect(methods.getByRole("button", { name: "oven" })).toHaveAttribute("aria-pressed", "true");
+  const asked = page.waitForRequest("**/api/find-recipes");
+  await sheet.getByRole("button", { name: "Find new ones on the web" }).click();
+  expect((await asked).postDataJSON()).toMatchObject({ have: ["chicken"], method: "oven", maxMinutes: 30, easy: true });
+  await expect(sheet.getByRole("list", { name: "Found on the web" })).toBeVisible();
+
+  await methods.getByRole("button", { name: "Any way" }).click();
+  await expect(sheet.getByText("Found for: chicken · oven · under 30 min · easy")).toBeVisible();
+});

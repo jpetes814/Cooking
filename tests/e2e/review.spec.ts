@@ -34,7 +34,7 @@ test("checks a photo-read recipe before saving, and goes back to fix it", async 
   await expect(preview.getByRole("heading", { name: "Lemon garlic pasta" })).toBeVisible();
   const checks = preview.getByRole("list", { name: "Worth checking" });
   await expect(checks).toContainText("Claude filled this in");
-  await expect(checks).toContainText("3 tags were suggested by Claude.");
+  await expect(checks).toContainText("5 tags were suggested by Claude.");
   await expect(checks).toContainText("No amount on 1 ingredient: butter.");
   await expect(preview.getByRole("list", { name: "Tags to save" })).toContainText("pasta");
   await expect(preview.getByText("200 g", { exact: false })).toBeVisible();

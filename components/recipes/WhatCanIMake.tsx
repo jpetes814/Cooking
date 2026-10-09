@@ -7,9 +7,50 @@ import type { FoundIdea } from "@/lib/import/find";
 import Sheet from "@/components/ui/Sheet";
 import { inputClass } from "@/components/ui/fields";
 import type { Recipe } from "@/lib/model/recipe";
-import { missingText, splitHave, whatCanIMake } from "@/lib/suggest/have";
+import { filtersOn, missingText, NO_FILTERS, splitHave, whatCanIMake, type HaveFilters } from "@/lib/suggest/have";
+import { METHODS, methodLabel, type Method, type TimeLimit } from "@/lib/search/tags";
 
 const HAVE_KEY = "recipe-box:have";
+const FILTERS_KEY = "recipe-box:have-filters";
+
+function readFilters(): HaveFilters {
+  try {
+    const v = JSON.parse(localStorage.getItem(FILTERS_KEY) ?? "null") as Partial<HaveFilters> | null;
+    return {
+      method: v && (METHODS as readonly string[]).includes(v.method ?? "") ? (v.method as Method) : null,
+      time: v?.time === 30 || v?.time === 60 ? v.time : null,
+      easy: v?.easy === true,
+    };
+  } catch {
+    return NO_FILTERS;
+  }
+}
+
+function saveFilters(f: HaveFilters) {
+  try {
+    if (filtersOn(f)) localStorage.setItem(FILTERS_KEY, JSON.stringify(f));
+    else localStorage.removeItem(FILTERS_KEY);
+  } catch {
+    // Not remembered this time; no harm.
+  }
+}
+
+const TIME_LABEL: Record<TimeLimit, string> = { 30: "Under 30 min", 60: "Under an hour" };
+
+function Chip({ on, onClick, children }: { on: boolean; onClick: () => void; children: React.ReactNode }) {
+  return (
+    <button
+      type="button"
+      aria-pressed={on}
+      onClick={onClick}
+      className={`min-h-10 shrink-0 rounded-full border px-3 text-sm ${
+        on ? "border-accent bg-accent-soft font-semibold text-accent" : "border-border bg-surface"
+      }`}
+    >
+      {children}
+    </button>
+  );
+}
 
 function readHave(): string[] {
   try {
@@ -53,7 +94,17 @@ export default function WhatCanIMake({
   >({ status: "idle" });
   const [have, setHave] = useState<string[]>(readHave);
   const [draft, setDraft] = useState("");
-  const matches = useMemo(() => whatCanIMake(recipes, have, staples), [recipes, have, staples]);
+  const [filters, setFilters] = useState<HaveFilters>(readFilters);
+  const [showFilters, setShowFilters] = useState(() => filtersOn(filters));
+  const matches = useMemo(() => whatCanIMake(recipes, have, staples, filters), [recipes, have, staples, filters]);
+
+  function filter(next: Partial<HaveFilters>) {
+    setFilters((f) => {
+      const merged = { ...f, ...next };
+      saveFilters(merged);
+      return merged;
+    });
+  }
 
   function update(next: string[]) {
     setHave(next);
@@ -62,8 +113,17 @@ export default function WhatCanIMake({
 
   async function findOnWeb() {
     setWeb({ status: "busy" });
-    const res = await callAi<{ ideas: FoundIdea[] }>("/api/find-recipes", { have, saved: recipes.map((r) => r.title) });
-    setWeb(res.ok ? { status: "done", for: have.join(", "), ideas: res.data.ideas } : { status: "error", text: res.error });
+    const res = await callAi<{ ideas: FoundIdea[] }>("/api/find-recipes", {
+      have,
+      saved: recipes.map((r) => r.title),
+      method: filters.method,
+      maxMinutes: filters.time,
+      easy: filters.easy,
+    });
+    const asked = [have.join(", "), filters.method && methodLabel(filters.method), filters.time && TIME_LABEL[filters.time].toLowerCase(), filters.easy && "easy"]
+      .filter(Boolean)
+      .join(" · ");
+    setWeb(res.ok ? { status: "done", for: asked, ideas: res.data.ideas } : { status: "error", text: res.error });
   }
 
   function add(e?: React.FormEvent) {
@@ -72,6 +132,10 @@ export default function WhatCanIMake({
     update(splitHave(draft, have));
     setDraft("");
   }
+
+  const currentAsk = [have.join(", "), filters.method && methodLabel(filters.method), filters.time && TIME_LABEL[filters.time].toLowerCase(), filters.easy && "easy"]
+    .filter(Boolean)
+    .join(" · ");
 
   return (
     <Sheet title="What can I make?" onClose={onClose}>
@@ -117,12 +181,68 @@ export default function WhatCanIMake({
         </div>
       )}
 
+      <div className="mt-4 rounded-2xl border border-border px-3">
+        <button
+          type="button"
+          aria-expanded={showFilters}
+          onClick={() => setShowFilters((v) => !v)}
+          className="flex min-h-11 w-full items-center justify-between text-left text-sm font-medium"
+        >
+          <span>
+            Cooking method, time, and effort{filtersOn(filters) && <span className="text-accent">{" · on"}</span>}
+          </span>
+          <span aria-hidden className="text-muted">{showFilters ? "▴" : "▾"}</span>
+        </button>
+        {showFilters && (
+          <div className="space-y-3 pb-3">
+            <div role="group" aria-label="How do you want to cook it?">
+              <p className="mb-1 text-xs text-muted">How do you want to cook it?</p>
+              <div className="-mx-3 flex gap-2 overflow-x-auto px-3 pb-1">
+                <Chip on={filters.method === null} onClick={() => filter({ method: null })}>
+                  Any way
+                </Chip>
+                {METHODS.map((m) => (
+                  <Chip key={m} on={filters.method === m} onClick={() => filter({ method: filters.method === m ? null : m })}>
+                    {methodLabel(m)}
+                  </Chip>
+                ))}
+              </div>
+            </div>
+            <div role="group" aria-label="How long do you have?">
+              <p className="mb-1 text-xs text-muted">How long do you have?</p>
+              <div className="flex flex-wrap gap-2">
+                <Chip on={filters.time === null} onClick={() => filter({ time: null })}>
+                  Any time
+                </Chip>
+                {([30, 60] as const).map((t) => (
+                  <Chip key={t} on={filters.time === t} onClick={() => filter({ time: filters.time === t ? null : t })}>
+                    {TIME_LABEL[t]}
+                  </Chip>
+                ))}
+                <Chip on={filters.easy} onClick={() => filter({ easy: !filters.easy })}>
+                  Easy only
+                </Chip>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
       {have.length === 0 ? (
         <p className="mt-6 text-center text-sm text-muted">Add a few things you have to see which recipes use them.</p>
       ) : matches.length === 0 ? (
         <p className="mt-6 rounded-2xl border border-dashed border-border p-5 text-center text-sm text-muted">
-          None of your recipes use those yet. Try fewer or more general words, like &ldquo;chicken&rdquo; instead of
-          &ldquo;chicken thighs&rdquo;.
+          {filtersOn(filters) ? (
+            <>
+              None of your recipes match with these filters. Filters only find recipes with method, time, or effort tags, so
+              add those with Edit, or try the web below.
+            </>
+          ) : (
+            <>
+              None of your recipes use those yet. Try fewer or more general words, like &ldquo;chicken&rdquo; instead of
+              &ldquo;chicken thighs&rdquo;.
+            </>
+          )}
         </p>
       ) : (
         <>
@@ -172,7 +292,7 @@ export default function WhatCanIMake({
           )}
           {web.status === "done" && (
             <>
-              {web.for !== have.join(", ") && (
+              {web.for !== currentAsk && (
                 <p className="mt-2 text-xs text-muted">Found for: {web.for}. Search again for your new list.</p>
               )}
               <ul aria-label="Found on the web" className="mt-3 space-y-2">

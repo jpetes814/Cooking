@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { MAX_HAVE, MAX_HAVE_LENGTH } from "@/lib/suggest/have";
+import { METHODS } from "@/lib/search/tags";
 import { publicHttpUrl } from "./safe-url";
 
 /**
@@ -14,6 +15,11 @@ export const FindRequest = z.object({
   have: z.array(z.string().trim().min(1).max(MAX_HAVE_LENGTH)).min(1, "Add something you have first.").max(MAX_HAVE),
   /** Names of recipes already saved, so it doesn't suggest them again. */
   saved: z.array(z.string().max(120)).max(200).default([]),
+  /** How they want to cook it, if they picked one. */
+  method: z.enum(METHODS).nullish(),
+  /** At most this many minutes, start to finish. */
+  maxMinutes: z.union([z.literal(30), z.literal(60)]).nullish(),
+  easy: z.boolean().default(false),
 });
 export type FindRequest = z.infer<typeof FindRequest>;
 

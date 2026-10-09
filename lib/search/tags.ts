@@ -8,6 +8,48 @@ export const MAX_TAGS = 50;
 export const MAX_TAG_LENGTH = 60;
 const MAX_DEPTH = 3;
 
+/** How it gets cooked: also offered as a filter in "What can I make?". */
+export const METHODS = ["oven", "stovetop", "grill", "air-fryer", "slow-cooker", "instant-pot", "one-pot", "one-pan", "no-cook"] as const;
+export type Method = (typeof METHODS)[number];
+
+/** "air-fryer" -> "air fryer". */
+export function methodLabel(m: string): string {
+  return m.replace(/-/g, " ");
+}
+
+/**
+ * True when a recipe's tags say it's cooked this way. Matches any group, so a
+ * slow-cooker tag saved under "effort" before methods existed still counts.
+ */
+export function usesMethod(tags: readonly string[], method: string): boolean {
+  return tags.some((t) => tagLeaf(t) === method);
+}
+
+/** How long it takes, start to finish. */
+export const TIMES = ["under-30-min", "30-60-min", "over-an-hour"] as const;
+/** How much work it is, plus the plan-ahead kinds. */
+export const EFFORTS = ["easy", "medium", "involved", "make-ahead", "freezer-friendly"] as const;
+
+export type TimeLimit = 30 | 60;
+
+/** The time tag for a recipe that takes this many minutes. */
+export function timeTag(minutes: number): string {
+  if (minutes <= 30) return "time/under-30-min";
+  if (minutes <= 60) return "time/30-60-min";
+  return "time/over-an-hour";
+}
+
+/** Tagged as fitting in this many minutes. "quick" and "weeknight" from before time tags still count. */
+export function fitsTime(tags: readonly string[], limit: TimeLimit): boolean {
+  const leaves = tags.map(tagLeaf);
+  if (leaves.includes("under-30-min") || leaves.includes("quick")) return true;
+  return limit === 60 && (leaves.includes("30-60-min") || leaves.includes("weeknight"));
+}
+
+export function isEasy(tags: readonly string[]): boolean {
+  return tags.some((t) => tagLeaf(t) === "easy");
+}
+
 /** Starter tags, grouped, offered as one-tap adds in the editor. */
 export const SUGGESTED_TAGS: { group: string; tags: string[] }[] = [
   { group: "meal", tags: ["breakfast", "lunch", "dinner", "snack", "dessert", "side", "drink"] },
@@ -15,7 +57,9 @@ export const SUGGESTED_TAGS: { group: string; tags: string[] }[] = [
   { group: "season", tags: ["spring", "summer", "fall", "winter", "holiday"] },
   { group: "diet", tags: ["vegetarian", "vegan", "gluten-free", "dairy-free", "high-protein"] },
   { group: "cuisine", tags: ["italian", "mexican", "thai", "indian", "chinese", "japanese", "korean", "mediterranean", "american"] },
-  { group: "effort", tags: ["quick", "weeknight", "one-pot", "make-ahead", "slow-cooker", "freezer-friendly"] },
+  { group: "method", tags: [...METHODS] },
+  { group: "time", tags: [...TIMES] },
+  { group: "effort", tags: [...EFFORTS] },
 ];
 
 /** "  Cuisine / Middle  Eastern " -> "cuisine/middle eastern". Null if empty or too long. */

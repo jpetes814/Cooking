@@ -205,3 +205,24 @@ describe("importRecipe", () => {
     expect(await importRecipe("not a link", { sources: sources(), extract })).toMatchObject({ ok: false, status: 400 });
   });
 });
+
+describe("cook time from recipe pages", () => {
+  it("reads schema.org durations", async () => {
+    const { parseDuration } = await import("@/lib/import/html");
+    expect(parseDuration("PT25M")).toBe(25);
+    expect(parseDuration("PT1H30M")).toBe(90);
+    expect(parseDuration("P0DT2H")).toBe(120);
+    expect(parseDuration("PT0M")).toBeNull();
+    expect(parseDuration("about an hour")).toBeNull();
+    expect(parseDuration(45)).toBeNull();
+  });
+
+  it("suggests a time tag from total time, or prep plus cook", async () => {
+    const { recipeFromHtml } = await import("@/lib/import/html");
+    const page = (extra: Record<string, unknown>) =>
+      `<script type="application/ld+json">${JSON.stringify({ "@type": "Recipe", name: "Stew", recipeIngredient: ["1 onion"], ...extra })}</script>`;
+    expect(recipeFromHtml(page({ totalTime: "PT2H" }))?.suggestedTags).toEqual(["time/over-an-hour"]);
+    expect(recipeFromHtml(page({ prepTime: "PT10M", cookTime: "PT35M" }))?.suggestedTags).toEqual(["time/30-60-min"]);
+    expect(recipeFromHtml(page({}))?.suggestedTags).toEqual([]);
+  });
+});
