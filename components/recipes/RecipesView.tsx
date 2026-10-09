@@ -7,6 +7,7 @@ import { useNow } from "@/components/shell/useNow";
 import { queueDeletes, queueUploads } from "@/lib/data/photos";
 import { parseLink, SITE_LABEL, type Recipe, type RecipeDoc } from "@/lib/model/recipe";
 import { applyPhotoEdits, coverPhoto, photoPath, sortedPhotos } from "@/lib/model/photos";
+import IdeasCard from "./IdeasCard";
 import RecipeDetail from "./RecipeDetail";
 import RecipeEditor, { type PhotoEdits } from "./RecipeEditor";
 import RecipePhoto from "./RecipePhoto";
@@ -117,6 +118,7 @@ export default function RecipesView({ uid, recipes }: { uid: string; recipes: Re
         </p>
       ) : (
         <>
+          {!filtering && recipes.length >= 3 && <IdeasCard uid={uid} recipes={recipes} now={now} onOpen={setOpenId} />}
           <div className="space-y-2">
             <input
               type="search"
@@ -196,7 +198,7 @@ export default function RecipesView({ uid, recipes }: { uid: string; recipes: Re
               Nothing matches. Try fewer words or tags.
             </p>
           ) : (
-            <ul className="space-y-2">
+            <ul aria-label="Your recipes" className="space-y-2">
               {shown.map((r) => {
                 const link = r.source.url ? parseLink(r.source.url) : null;
                 const photoCount = Object.keys(r.photos ?? {}).length;

@@ -44,9 +44,9 @@ test("adds a photo, shows it, opens it full screen, and removes it", async ({ pa
   await viewer.getByRole("button", { name: "Close" }).click();
 
   await page.getByRole("button", { name: "‹ All recipes" }).click();
-  await expect(page.getByRole("button", { name: /Photo soup/ })).toContainText("1 photo");
+  await expect(page.getByRole("list", { name: "Your recipes" }).getByRole("button", { name: /Photo soup/ })).toContainText("1 photo");
 
-  await page.getByRole("button", { name: /Photo soup/ }).click();
+  await page.getByRole("list", { name: "Your recipes" }).getByRole("button", { name: /Photo soup/ }).click();
   await page.getByRole("button", { name: "Edit" }).click();
   const sheet = page.getByRole("dialog", { name: "Edit recipe" });
   await sheet.getByRole("button", { name: "Remove photo 1" }).click();
@@ -86,7 +86,7 @@ test("an uploaded photo still shows after reopening with no signal", async ({ pa
 
   await context.setOffline(true);
   await page.reload();
-  await page.getByRole("button", { name: /Cached casserole/ }).click();
+  await page.getByRole("list", { name: "Your recipes" }).getByRole("button", { name: /Cached casserole/ }).click();
   const offlineCover = page.getByRole("button", { name: "Open photo 1" }).getByRole("img");
   await expect.poll(() => offlineCover.evaluate((img: HTMLImageElement) => img.complete && img.naturalWidth)).toBeGreaterThan(0);
 });

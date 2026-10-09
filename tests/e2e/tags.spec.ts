@@ -37,7 +37,7 @@ test("tags recipes, then finds them by tag, sub-tag, words, and ingredients", as
   });
 
   const search = page.getByLabel("Search recipes");
-  const results = page.getByRole("button", { name: /Zesty quinoa/ });
+  const results = page.getByRole("list", { name: "Your recipes" }).getByRole("button", { name: /Zesty quinoa/ });
 
   await search.fill("zesty soups");
   await expect(results).toHaveCount(1);
@@ -63,9 +63,9 @@ test("tags recipes, then finds them by tag, sub-tag, words, and ingredients", as
   await expect(filters.getByRole("button", { name: /^In season: / })).toBeVisible();
 
   // Tapping a tag on a recipe shows every recipe with it.
-  await page.getByRole("button", { name: /Zesty quinoa soup/ }).click();
+  await page.getByRole("list", { name: "Your recipes" }).getByRole("button", { name: /Zesty quinoa soup/ }).click();
   await page.getByRole("button", { name: "More recipes tagged dish/soup" }).click();
   await expect(filters.getByRole("button", { name: /soup/ }).first()).toHaveAttribute("aria-pressed", "true");
-  await expect(page.getByRole("button", { name: /Zesty quinoa soup/ })).toBeVisible();
-  await expect(page.getByRole("button", { name: /Zesty quinoa salad/ })).toHaveCount(0);
+  await expect(page.getByRole("list", { name: "Your recipes" }).getByRole("button", { name: /Zesty quinoa soup/ })).toBeVisible();
+  await expect(page.getByRole("list", { name: "Your recipes" }).getByRole("button", { name: /Zesty quinoa salad/ })).toHaveCount(0);
 });

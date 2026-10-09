@@ -8,6 +8,8 @@ const FIRESTORE = "http://127.0.0.1:8180";
 
 export const PASSWORD = "test-password-123";
 export const TESTER = "tester@example.com";
+/** On the allowlist with a box of their own, for tests that need a known set of recipes. */
+export const COOK = "cook@example.com";
 /** Has an account, but isn't on the allowlist. */
 export const STRANGER = "stranger@example.com";
 
