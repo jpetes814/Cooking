@@ -47,18 +47,21 @@ const FILLED_FROM: Record<ImportVia, string> = {
 export default function RecipeEditor({
   uid,
   existing,
+  start,
   usedTags,
   onSave,
   onClose,
 }: {
   uid: string;
   existing?: Recipe;
+  /** A new recipe's name and link to begin with, e.g. one found on the web. */
+  start?: { title: string; url: string };
   /** Tags already on other recipes, offered first. */
   usedTags: string[];
   onSave: (recipe: RecipeDoc, photos: PhotoEdits) => void;
   onClose: () => void;
 }) {
-  const [form, setForm] = useState(() => toInput(existing));
+  const [form, setForm] = useState(() => (existing ? toInput(existing) : { ...toInput(), ...start }));
   const [tags, setTags] = useState<string[]>(() => existing?.tags ?? []);
   const [added, setAdded] = useState<NewPhoto[]>([]);
   const [removed, setRemoved] = useState<string[]>([]);

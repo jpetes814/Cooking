@@ -21,7 +21,8 @@ export function stem(word: string): string {
   return word;
 }
 
-function normalize(text: string): string {
+/** Lowercase, no accents or punctuation, each word singular. Shared with "What can I make?". */
+export function normalize(text: string): string {
   return text
     .toLowerCase()
     .normalize("NFD")

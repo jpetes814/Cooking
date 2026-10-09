@@ -19,7 +19,7 @@ Being built in small steps, each one a pull request you can test on your phone b
 9. Check a recipe over before saving it
 10. Past cooks and notes for next time
 11. Ideas for tonight, with optional local weather
-12. Find new recipes on the web, like the ones you love
+12. What can I make? Type what you have, see which of your recipes use it, or find new ones on the web
 13. Shopping trips: one merged list for several recipes
 14. "Use it up": recipes that share what you're already buying
 15. Backup and copy between the test and real app
