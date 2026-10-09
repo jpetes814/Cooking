@@ -48,7 +48,7 @@ export default defineConfig({
       env: {
         NEXT_PUBLIC_FIREBASE_EMULATORS: "1",
         FIREBASE_AUTH_EMULATOR_HOST: "127.0.0.1:9099",
-        ALLOWED_EMAILS: "tester@example.com",
+        ALLOWED_EMAILS: "tester@example.com,cook@example.com",
         // Stand-in AI answers and fake recipe sites (lib/ai/mocks.ts): no Claude key, no network, no spend.
         AI_MOCK: "1",
       },

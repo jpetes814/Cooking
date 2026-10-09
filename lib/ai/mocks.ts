@@ -69,3 +69,19 @@ export const mockSources: Sources = {
     return { ok: true, title: "The easiest lemon garlic pasta", description: "You need spaghetti, lemons, garlic, olive oil." };
   },
 };
+
+/** Pretends to search the web: two sample recipe pages on the fake site. */
+export function mockFind(have: readonly string[]): { found: import("@/lib/import/find").Found; seen: string[] } {
+  const seen = ["https://example.com/recipes/sheet-pan-gnocchi", "https://example.com/recipes/lemon-orzo"];
+  return {
+    seen,
+    found: {
+      ideas: [
+        { title: "Sheet pan gnocchi", url: seen[0], uses: have.slice(0, 2), why: "A one-pan dinner that uses what you have." },
+        { title: "Lemony orzo", url: seen[1], uses: have.slice(0, 1), why: "Quick, bright, and needs only a few extras." },
+        // Not in the search results, so it must never reach the phone.
+        { title: "Made-up page", url: "https://example.org/not-real", uses: [], why: "Should be dropped." },
+      ],
+    },
+  };
+}

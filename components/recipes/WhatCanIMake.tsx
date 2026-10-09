@@ -1,6 +1,9 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useOnline } from "@/components/shell/useOnline";
+import { callAi } from "@/lib/ai/client";
+import type { FoundIdea } from "@/lib/import/find";
 import Sheet from "@/components/ui/Sheet";
 import { inputClass } from "@/components/ui/fields";
 import type { Recipe } from "@/lib/model/recipe";
@@ -34,13 +37,20 @@ export default function WhatCanIMake({
   recipes,
   staples,
   onOpen,
+  onSaveLink,
   onClose,
 }: {
   recipes: Recipe[];
   staples: string[];
   onOpen: (id: string) => void;
+  /** Start a new recipe from a page found on the web. */
+  onSaveLink: (start: { title: string; url: string }) => void;
   onClose: () => void;
 }) {
+  const online = useOnline();
+  const [web, setWeb] = useState<
+    { status: "idle" } | { status: "busy" } | { status: "done"; for: string; ideas: FoundIdea[] } | { status: "error"; text: string }
+  >({ status: "idle" });
   const [have, setHave] = useState<string[]>(readHave);
   const [draft, setDraft] = useState("");
   const matches = useMemo(() => whatCanIMake(recipes, have, staples), [recipes, have, staples]);
@@ -48,6 +58,12 @@ export default function WhatCanIMake({
   function update(next: string[]) {
     setHave(next);
     saveHave(next);
+  }
+
+  async function findOnWeb() {
+    setWeb({ status: "busy" });
+    const res = await callAi<{ ideas: FoundIdea[] }>("/api/find-recipes", { have, saved: recipes.map((r) => r.title) });
+    setWeb(res.ok ? { status: "done", for: have.join(", "), ideas: res.data.ideas } : { status: "error", text: res.error });
   }
 
   function add(e?: React.FormEvent) {
@@ -129,6 +145,67 @@ export default function WhatCanIMake({
             ))}
           </ul>
         </>
+      )}
+
+      {have.length > 0 && (
+        <section aria-label="New recipes from the web" className="mt-6 border-t border-border pt-4">
+          <h3 className="font-semibold">Try something new</h3>
+          <p className="mt-1 text-xs text-muted">Claude searches the web for recipes that use what you have. You check each one before it&apos;s saved.</p>
+          <button
+            type="button"
+            onClick={findOnWeb}
+            disabled={!online || web.status === "busy"}
+            className="mt-3 min-h-11 w-full rounded-xl border border-accent bg-accent-soft font-semibold text-accent disabled:opacity-60"
+          >
+            {!online
+              ? "Finding new recipes needs signal"
+              : web.status === "busy"
+                ? "Searching the web..."
+                : web.status === "done"
+                  ? "Search again"
+                  : "Find new ones on the web"}
+          </button>
+          {web.status === "error" && (
+            <p role="status" className="mt-2 text-sm text-warn">
+              {web.text}
+            </p>
+          )}
+          {web.status === "done" && (
+            <>
+              {web.for !== have.join(", ") && (
+                <p className="mt-2 text-xs text-muted">Found for: {web.for}. Search again for your new list.</p>
+              )}
+              <ul aria-label="Found on the web" className="mt-3 space-y-2">
+                {web.ideas.map((idea) => (
+                  <li key={idea.url} className="rounded-2xl border border-border bg-bg p-3">
+                    <p className="font-semibold">{idea.title}</p>
+                    <p className="text-xs text-muted">{idea.site}</p>
+                    {idea.uses.length > 0 && <p className="mt-1 text-xs text-ok">uses {idea.uses.join(", ")}</p>}
+                    {idea.why && <p className="mt-1 text-sm">{idea.why}</p>}
+                    <div className="mt-2 flex gap-2">
+                      <a
+                        href={idea.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex min-h-11 flex-1 items-center justify-center rounded-xl border border-border text-sm font-medium"
+                      >
+                        Look ↗
+                      </a>
+                      <button
+                        type="button"
+                        onClick={() => onSaveLink({ title: idea.title, url: idea.url })}
+                        aria-label={`Save ${idea.title}`}
+                        className="min-h-11 flex-1 rounded-xl bg-accent text-sm font-semibold text-on-accent"
+                      >
+                        Save
+                      </button>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </>
+          )}
+        </section>
       )}
     </Sheet>
   );

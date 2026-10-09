@@ -54,3 +54,36 @@ test("finds recipes that use what you have, counting pantry staples, offline too
   await sheet.getByRole("button", { name: "Clear" }).click();
   await expect(sheet.getByText("Add a few things you have")).toBeVisible();
 });
+
+test("finds new recipes on the web and saves one after checking it", async ({ page, context }) => {
+  await signIn(page, COOK);
+  await page.getByRole("button", { name: "What can I make?" }).click();
+  const sheet = page.getByRole("dialog", { name: "What can I make?" });
+  await sheet.getByLabel("What do you have?").fill("gnocchi, tomatoes");
+  await sheet.getByRole("button", { name: "Add", exact: true }).click();
+
+  // No signal: it says so instead of failing.
+  await context.setOffline(true);
+  await expect(sheet.getByRole("button", { name: "Finding new recipes needs signal" })).toBeDisabled();
+  await context.setOffline(false);
+
+  await sheet.getByRole("button", { name: "Find new ones on the web" }).click();
+  const found = sheet.getByRole("list", { name: "Found on the web" }).getByRole("listitem");
+  // The made-up page that wasn't in the search results is dropped.
+  await expect(found).toHaveCount(2);
+  await expect(found.first()).toContainText("Sheet pan gnocchi");
+  await expect(found.first()).toContainText("example.com");
+  await expect(found.first()).toContainText("uses gnocchi, tomatoes");
+  await expect(found.first().getByRole("link", { name: "Look ↗" })).toHaveAttribute("href", "https://example.com/recipes/sheet-pan-gnocchi");
+
+  // Save starts a new recipe with the link; you fill and check it as usual.
+  await found.first().getByRole("button", { name: "Save Sheet pan gnocchi" }).click();
+  const editor = page.getByRole("dialog", { name: "New recipe" });
+  await expect(editor.getByLabel("Name")).toHaveValue("Sheet pan gnocchi");
+  await expect(editor.getByLabel("Link")).toHaveValue("https://example.com/recipes/sheet-pan-gnocchi");
+  await editor.getByRole("button", { name: "Fill from link" }).click();
+  await expect(editor.getByLabel("Ingredients")).toHaveValue(/cherry tomatoes/);
+  await editor.getByRole("button", { name: "Review recipe" }).click();
+  await editor.getByRole("button", { name: "Looks good, save" }).click();
+  await expect(page.getByRole("heading", { name: "Sheet pan gnocchi" })).toBeVisible();
+});
