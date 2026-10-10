@@ -8,6 +8,7 @@ import { canStep, stepTarget, targetLabel } from "@/lib/model/scale";
 import type { Recipe } from "@/lib/model/recipe";
 import { progress, tidyExtra, tripRecipes, type Trip } from "@/lib/model/trip";
 import { shoppingList, type ShopItem } from "@/lib/shop/merge";
+import { addsText, leftoverIdeas } from "@/lib/shop/useItUp";
 import RecipePicker from "./RecipePicker";
 
 /** One trip's list, by aisle. Tap an item to put it in the cart; it all works with no signal. */
@@ -35,6 +36,16 @@ export default function TripView({
     trip.checked
   );
   const inCart = all.filter((i) => trip.checked[i.key]);
+  const ideas = useMemo(
+    () =>
+      leftoverIdeas(
+        recipes,
+        list.aisles.flatMap((a) => a.items.filter((i) => !i.extra).map((i) => i.key)),
+        trip.recipeIds,
+        staples
+      ),
+    [recipes, list, trip.recipeIds, staples]
+  );
   const empty = forTrip.filter((r) => r.ingredients.length === 0);
 
   function addItem(e: React.FormEvent) {
@@ -136,6 +147,32 @@ export default function TripView({
           </section>
         );
       })}
+
+      {ideas.length > 0 && (
+        <section aria-label="Use it up" className="rounded-2xl border border-accent bg-accent-soft p-3">
+          <h3 className="font-semibold text-accent">Use it up</h3>
+          <p className="text-xs text-muted">Other recipes that use what you&apos;re already buying, so less goes to waste.</p>
+          <ul className="mt-2 space-y-2">
+            {ideas.map(({ recipe: r, shares, adds }) => (
+              <li key={r.id} className="flex items-center gap-2 rounded-xl bg-surface p-3">
+                <span className="flex min-w-0 flex-1 flex-col">
+                  <span className="font-medium">{r.title}</span>
+                  <span className="text-xs text-ok">uses {shares.join(", ")}</span>
+                  <span className="text-xs text-muted">{addsText(adds)}</span>
+                </span>
+                <button
+                  type="button"
+                  aria-label={`Add ${r.title} to this trip`}
+                  onClick={() => setTripRecipes(uid, trip.id, [...trip.recipeIds, r.id])}
+                  className="min-h-11 shrink-0 rounded-xl bg-accent px-3 text-sm font-semibold text-on-accent"
+                >
+                  Add to trip
+                </button>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       <form onSubmit={addItem} className="flex items-end gap-2">
         <label className="block flex-1">
