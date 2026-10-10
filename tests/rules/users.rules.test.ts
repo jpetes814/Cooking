@@ -6,7 +6,7 @@ import {
   initializeTestEnvironment,
   type RulesTestEnvironment,
 } from "@firebase/rules-unit-testing";
-import { collection, deleteDoc, doc, getDoc, getDocs, setDoc, updateDoc } from "firebase/firestore";
+import { collection, deleteDoc, deleteField, doc, FieldPath, getDoc, getDocs, setDoc, updateDoc } from "firebase/firestore";
 
 const ME = { uid: "me", email: "me@example.com" };
 const OTHER = { uid: "other", email: "other@example.com" }; // on the allowlist, but it's not their folder
@@ -24,6 +24,16 @@ const recipe = (overrides: Record<string, unknown> = {}) => ({
   steps: ["Simmer"],
   tags: [],
   notes: "",
+  createdAt: 1,
+  updatedAt: 1,
+  ...overrides,
+});
+
+const trip = (overrides: Record<string, unknown> = {}) => ({
+  name: "Trip for Saturday",
+  recipeIds: ["r1"],
+  checked: {},
+  extras: [],
   createdAt: 1,
   updatedAt: 1,
   ...overrides,
@@ -158,5 +168,40 @@ describe("everything else", () => {
   it("config can't be read or changed from the app", async () => {
     await assertFails(getDoc(doc(as(ME), "config/allowlist")));
     await assertFails(setDoc(doc(as(ME), "config/allowlist"), { emails: [ME.email, STRANGER.email] }));
+  });
+});
+
+describe("shopping trips", () => {
+  it("you can make, check off, and delete your own", async () => {
+    const ref = doc(as(ME), "users/me/trips/t1");
+    await assertSucceeds(setDoc(ref, trip()));
+    await assertSucceeds(getDoc(ref));
+    await assertSucceeds(updateDoc(ref, new FieldPath("checked", "red onion"), true, "updatedAt", 2));
+    await assertSucceeds(updateDoc(ref, new FieldPath("checked", "red onion"), deleteField(), "updatedAt", 3));
+    await assertSucceeds(updateDoc(ref, { extras: ["paper towels"], recipeIds: [], updatedAt: 4 }));
+    await assertSucceeds(updateDoc(ref, new FieldPath("servings", "r1"), 6, "updatedAt", 5));
+    await assertSucceeds(deleteDoc(ref));
+  });
+
+  it("nobody else can see or change them", async () => {
+    await env.withSecurityRulesDisabled((ctx) => setDoc(doc(ctx.firestore(), "users/me/trips/t1"), trip()));
+    await assertFails(getDoc(doc(as(OTHER), "users/me/trips/t1")));
+    await assertFails(setDoc(doc(as(OTHER), "users/me/trips/t2"), trip()));
+    await assertFails(setDoc(doc(as(STRANGER), "users/stranger/trips/t1"), trip()));
+    await assertFails(getDocs(collection(as(OTHER), "users/me/trips")));
+  });
+
+  it("keeps trips a sensible shape and size", async () => {
+    const at = (id: string) => doc(as(ME), `users/me/trips/${id}`);
+    await assertFails(setDoc(at("a"), trip({ name: "" })));
+    await assertFails(setDoc(at("b"), trip({ name: "x".repeat(81) })));
+    await assertFails(setDoc(at("c"), trip({ recipeIds: Array.from({ length: 51 }, (_, i) => `r${i}`) })));
+    await assertFails(setDoc(at("d"), trip({ checked: ["onion"] })));
+    await assertFails(setDoc(at("e"), trip({ extras: Array.from({ length: 101 }, (_, i) => `x${i}`) })));
+    await assertFails(setDoc(at("f"), trip({ createdAt: "today" })));
+    await assertFails(setDoc(at("h"), trip({ servings: [4] })));
+    await assertSucceeds(setDoc(at("i"), trip({ servings: { r1: 2 } })));
+    await assertSucceeds(setDoc(at("g"), trip()));
+    await assertFails(updateDoc(at("g"), { createdAt: 99, updatedAt: 2 }));
   });
 });

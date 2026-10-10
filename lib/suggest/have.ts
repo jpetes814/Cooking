@@ -59,7 +59,7 @@ export function splitHave(raw: string, current: readonly string[] = []): string[
 const padded = (s: string) => ` ${normalize(s)} `;
 
 /** True when one names the other: every word of the shorter is in the longer, in order. */
-function sameThing(have: string, ingredient: string): boolean {
+export function sameThing(have: string, ingredient: string): boolean {
   const h = padded(have);
   const i = padded(ingredient);
   if (h.trim() === "" || i.trim() === "") return false;

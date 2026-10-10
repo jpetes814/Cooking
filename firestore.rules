@@ -54,6 +54,21 @@ service cloud.firestore {
         && r.updatedAt is number;
     }
 
+    function validTrip(t) {
+      return t.name is string
+        && t.name.size() > 0
+        && t.name.size() <= 80
+        && t.recipeIds is list
+        && t.recipeIds.size() <= 50
+        && t.checked is map
+        && t.checked.size() <= 600
+        && t.extras is list
+        && t.extras.size() <= 100
+        && (!('servings' in t) || (t.servings is map && t.servings.size() <= 50))
+        && t.createdAt is number
+        && t.updatedAt is number;
+    }
+
     match /users/{uid} {
       allow read, write: if owner(uid);
 
@@ -63,6 +78,15 @@ service cloud.firestore {
         // Editing can't rewrite when it was first saved.
         allow update: if owner(uid)
           && validRecipe(request.resource.data)
+          && request.resource.data.createdAt == resource.data.createdAt;
+      }
+
+      // Shopping trips: which recipes, what's checked off, and extra items.
+      match /trips/{tripId} {
+        allow read, delete: if owner(uid);
+        allow create: if owner(uid) && validTrip(request.resource.data);
+        allow update: if owner(uid)
+          && validTrip(request.resource.data)
           && request.resource.data.createdAt == resource.data.createdAt;
       }
 
