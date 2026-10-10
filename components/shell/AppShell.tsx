@@ -13,14 +13,11 @@ import { usePantry } from "@/components/pantry/usePantry";
 import PantryView from "@/components/pantry/PantryView";
 import { useRecipes } from "@/components/recipes/useRecipes";
 import RecipesView from "@/components/recipes/RecipesView";
+import { useTrips } from "@/components/shop/useTrips";
+import ShopView from "@/components/shop/ShopView";
 
 // Tabs that don't have their real screen yet.
-const COMING: Partial<Record<TabId, { title: string; body: string }>> = {
-  shop: {
-    title: "Shopping trips",
-    body: "Pick a few recipes for the week and get one list, with the same ingredients added up and grouped by aisle. Check things off in the store, even with no signal.",
-  },
-};
+const COMING: Partial<Record<TabId, { title: string; body: string }>> = {};
 
 export default function AppShell() {
   const auth = useAuth();
@@ -35,6 +32,7 @@ function SignedIn({ uid, email }: { uid: string; email: string }) {
   const [tab, setTab] = useState<TabId>("recipes");
   const pantry = usePantry(uid);
   const recipes = useRecipes(uid);
+  const trips = useTrips(uid);
 
   // Photos saved with no signal go up on their own: now, and whenever signal returns.
   useEffect(() => {
@@ -78,6 +76,14 @@ function SignedIn({ uid, email }: { uid: string; email: string }) {
               <p className="py-6 text-center text-sm text-muted">Loading...</p>
             ) : (
               <RecipesView uid={uid} recipes={recipes.recipes} staples={pantry.status === "loading" ? [] : pantry.items} />
+            ))}
+          {tab === "shop" &&
+            (trips.status === "loading" || recipes.status === "loading" ? (
+              <p className="py-6 text-center text-sm text-muted">Loading...</p>
+            ) : trips.status === "denied" ? (
+              <NotOnList email={email} reason="rulesOutdated" />
+            ) : (
+              <ShopView uid={uid} trips={trips.trips} recipes={recipes.recipes} staples={pantry.status === "ready" ? pantry.items : []} />
             ))}
           {tab === "pantry" &&
             (pantry.status === "loading" ? (

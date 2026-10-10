@@ -1,0 +1,197 @@
+"use client";
+
+import { useMemo, useState } from "react";
+import { inputClass } from "@/components/ui/fields";
+import { addExtra, deleteTrip, removeExtra, setChecked, setTripRecipes, uncheckAll } from "@/lib/data/trips";
+import type { Recipe } from "@/lib/model/recipe";
+import { progress, tidyExtra, type Trip } from "@/lib/model/trip";
+import { shoppingList, type ShopItem } from "@/lib/shop/merge";
+import RecipePicker from "./RecipePicker";
+
+/** One trip's list, by aisle. Tap an item to put it in the cart; it all works with no signal. */
+export default function TripView({
+  uid,
+  trip,
+  recipes,
+  staples,
+  onBack,
+}: {
+  uid: string;
+  trip: Trip;
+  recipes: Recipe[];
+  staples: string[];
+  onBack: () => void;
+}) {
+  const [picking, setPicking] = useState(false);
+  const [draft, setDraft] = useState("");
+  const [confirming, setConfirming] = useState(false);
+  const forTrip = useMemo(() => trip.recipeIds.map((id) => recipes.find((r) => r.id === id)).filter((r): r is Recipe => !!r), [trip.recipeIds, recipes]);
+  const list = useMemo(() => shoppingList(forTrip, trip.extras, staples), [forTrip, trip.extras, staples]);
+  const all = list.aisles.flatMap((a) => a.items);
+  const { done, left } = progress(
+    all.map((i) => i.key),
+    trip.checked
+  );
+  const inCart = all.filter((i) => trip.checked[i.key]);
+  const empty = forTrip.filter((r) => r.ingredients.length === 0);
+
+  function addItem(e: React.FormEvent) {
+    e.preventDefault();
+    const item = tidyExtra(draft, trip.extras);
+    if (item) addExtra(uid, trip.id, item);
+    setDraft("");
+  }
+
+  const row = (item: ShopItem) => {
+    const on = Boolean(trip.checked[item.key]);
+    return (
+      <li key={item.key} className="flex items-stretch">
+        <button
+          type="button"
+          role="checkbox"
+          aria-checked={on}
+          aria-label={item.name}
+          onClick={() => setChecked(uid, trip.id, item.key, !on)}
+          className="flex min-h-14 flex-1 items-center gap-3 px-3 py-2 text-left"
+        >
+          <span
+            aria-hidden
+            className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border-2 text-sm ${
+              on ? "border-accent bg-accent text-on-accent" : "border-border"
+            }`}
+          >
+            {on ? "✓" : ""}
+          </span>
+          <span className={`flex min-w-0 flex-col ${on ? "text-muted line-through" : ""}`}>
+            <span className="text-base">
+              {item.amount && <span className="font-semibold">{item.amount} </span>}
+              {item.name}
+            </span>
+            {item.recipes.length > 0 && <span className="truncate text-xs text-muted no-underline">{item.recipes.join(" · ")}</span>}
+          </span>
+        </button>
+        {item.extra && (
+          <button
+            type="button"
+            aria-label={`Remove ${item.name}`}
+            onClick={() => removeExtra(uid, trip.id, item.name)}
+            className="min-h-14 min-w-11 px-3 text-lg text-muted"
+          >
+            ×
+          </button>
+        )}
+      </li>
+    );
+  };
+
+  return (
+    <article className="space-y-5">
+      <div className="flex items-center justify-between">
+        <button type="button" onClick={onBack} className="min-h-11 pr-3 text-sm font-medium text-accent">
+          ‹ All trips
+        </button>
+        <button type="button" onClick={() => setPicking(true)} className="min-h-11 rounded-xl border border-border px-4 text-sm font-medium">
+          Change recipes
+        </button>
+      </div>
+
+      <header>
+        <h2 className="text-2xl font-bold tracking-tight">{trip.name}</h2>
+        <p className="mt-1 text-sm text-muted" data-testid="trip-progress">
+          {all.length === 0 ? "Nothing to buy yet" : left === 0 ? "All in the cart" : `${left} to get · ${done} in the cart`}
+          {trip.pending && <span className="text-warn"> · waiting to sync</span>}
+        </p>
+        {forTrip.length > 0 && (
+          <p className="mt-2 text-sm">
+            For <span className="font-medium">{forTrip.map((r) => r.title).join(", ")}</span>
+          </p>
+        )}
+        {empty.length > 0 && (
+          <p className="mt-1 text-xs text-warn">
+            {empty.map((r) => r.title).join(", ")} {empty.length === 1 ? "has" : "have"} no ingredients yet, so {empty.length === 1 ? "it isn't" : "they aren't"} on the list.
+          </p>
+        )}
+      </header>
+
+      {list.aisles.map(({ aisle, items }) => {
+        const toGet = items.filter((i) => !trip.checked[i.key]);
+        if (!toGet.length) return null;
+        return (
+          <section key={aisle} aria-label={aisle}>
+            <h3 className="text-sm font-semibold uppercase tracking-wide text-muted">{aisle}</h3>
+            <ul className="mt-1 divide-y divide-border rounded-2xl border border-border bg-surface">{toGet.map(row)}</ul>
+          </section>
+        );
+      })}
+
+      <form onSubmit={addItem} className="flex items-end gap-2">
+        <label className="block flex-1">
+          <span className="text-sm font-medium">Add something else</span>
+          <input value={draft} onChange={(e) => setDraft(e.target.value)} placeholder="Paper towels" enterKeyHint="done" className={inputClass} />
+        </label>
+        <button type="submit" className="min-h-12 shrink-0 rounded-xl bg-accent px-4 font-semibold text-on-accent">
+          Add
+        </button>
+      </form>
+
+      {inCart.length > 0 && (
+        <section aria-label="In the cart">
+          <div className="flex items-center justify-between">
+            <h3 className="text-sm font-semibold uppercase tracking-wide text-muted">In the cart · {inCart.length}</h3>
+            <button type="button" onClick={() => uncheckAll(uid, trip.id)} className="min-h-11 px-2 text-sm font-medium text-accent">
+              Uncheck all
+            </button>
+          </div>
+          <ul className="mt-1 divide-y divide-border rounded-2xl border border-border bg-surface">{inCart.map(row)}</ul>
+        </section>
+      )}
+
+      {list.staples.length > 0 && (
+        <section aria-label="Probably at home">
+          <h3 className="text-sm font-semibold uppercase tracking-wide text-muted">Probably at home</h3>
+          <p className="mt-1 text-sm text-muted">
+            On your pantry list: {list.staples.map((s) => (s.amount ? `${s.name} (${s.amount})` : s.name)).join(", ")}.
+          </p>
+        </section>
+      )}
+
+      <div className="border-t border-border pt-4">
+        {confirming ? (
+          <div className="flex gap-2">
+            <button type="button" onClick={() => setConfirming(false)} className="min-h-12 flex-1 rounded-xl border border-border font-medium">
+              Keep it
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                deleteTrip(uid, trip.id);
+                onBack();
+              }}
+              className="min-h-12 flex-1 rounded-xl bg-warn font-semibold text-on-accent"
+            >
+              Yes, delete
+            </button>
+          </div>
+        ) : (
+          <button type="button" onClick={() => setConfirming(true)} className="min-h-12 w-full text-sm font-medium text-warn">
+            Delete trip
+          </button>
+        )}
+      </div>
+
+      {picking && (
+        <RecipePicker
+          title="Recipes for this trip"
+          recipes={recipes}
+          initial={trip.recipeIds.filter((id) => recipes.some((r) => r.id === id))}
+          doneLabel={(n) => (n ? `Shop for ${n} recipe${n === 1 ? "" : "s"}` : "Shop for no recipes")}
+          onClose={() => setPicking(false)}
+          onDone={(ids) => {
+            setTripRecipes(uid, trip.id, ids);
+            setPicking(false);
+          }}
+        />
+      )}
+    </article>
+  );
+}
