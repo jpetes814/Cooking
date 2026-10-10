@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Sheet from "@/components/ui/Sheet";
 import { TextArea, TextInput } from "@/components/ui/fields";
 import { useOnline } from "@/components/shell/useOnline";
@@ -48,6 +48,7 @@ export default function RecipeEditor({
   uid,
   existing,
   start,
+  autoFill,
   usedTags,
   onSave,
   onClose,
@@ -56,6 +57,8 @@ export default function RecipeEditor({
   existing?: Recipe;
   /** A new recipe's name and link to begin with, e.g. one found on the web. */
   start?: { title: string; url: string };
+  /** Start reading the link right away, for links sent to the app. */
+  autoFill?: boolean;
   /** Tags already on other recipes, offered first. */
   usedTags: string[];
   onSave: (recipe: RecipeDoc, photos: PhotoEdits) => void;
@@ -117,6 +120,17 @@ export default function RecipeEditor({
     }
     applyDraft(res.data.draft, res.data.via, setFill);
   }
+
+  // A link sent to the app fills itself in once, if there's signal.
+  const autoStarted = useRef(false);
+  useEffect(() => {
+    if (!autoFill || autoStarted.current || !online || !form.url.trim()) return;
+    autoStarted.current = true;
+    const id = setTimeout(() => void fillFromLink(), 0);
+    return () => clearTimeout(id);
+    // Only on opening; fillFromLink reads the form as it is then.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoFill, online]);
 
   /** Sends the recipe's photos to Claude: uploaded ones by address, new ones as the shrunk image. */
   async function readPhotos() {
