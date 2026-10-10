@@ -37,13 +37,21 @@ describe("find new recipes on the web", () => {
   it("needs at least one item and keeps requests small", () => {
     expect(FindRequest.safeParse({ have: [] }).success).toBe(false);
     expect(FindRequest.safeParse({ have: ["x".repeat(41)] }).success).toBe(false);
-    expect(FindRequest.parse({ have: [" leeks "] })).toEqual({ have: ["leeks"], saved: [] });
+    expect(FindRequest.parse({ have: [" leeks "] })).toEqual({ have: ["leeks"], saved: [], easy: false });
+    expect(FindRequest.safeParse({ have: ["leeks"], method: "campfire" }).success).toBe(false);
+    expect(FindRequest.safeParse({ have: ["leeks"], maxMinutes: 45 }).success).toBe(false);
   });
 
   it("asks for what you have and skips what you've saved", () => {
-    const p = findPrompt({ have: ["leeks", "potatoes"], saved: ["Potato leek soup"] });
+    const p = findPrompt({ have: ["leeks", "potatoes"], saved: ["Potato leek soup"], easy: false });
     expect(p).toContain("What they have: leeks, potatoes");
     expect(p).toContain("don't suggest these): Potato leek soup");
-    expect(findPrompt({ have: ["leeks"], saved: [] })).not.toContain("already have");
+    expect(findPrompt({ have: ["leeks"], saved: [], easy: false })).not.toContain("already have");
+  });
+
+  it("passes on how you want to cook it, how long you have, and easy", () => {
+    const p = findPrompt({ have: ["chicken"], saved: [], method: "air-fryer", maxMinutes: 30, easy: true });
+    expect(p).toContain("Only suggest recipes that are: cooked by air fryer; ready in 30 minutes or less, start to finish; easy");
+    expect(findPrompt({ have: ["chicken"], saved: [], easy: false })).not.toContain("Only suggest");
   });
 });

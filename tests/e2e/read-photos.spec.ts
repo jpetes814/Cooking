@@ -30,8 +30,8 @@ test("Claude reads a recipe photo into a draft and suggests tags", async ({ page
   const suggestions = sheet.getByRole("group", { name: "Suggested tags" });
   await expect(suggestions).toContainText("pasta");
   await expect(sheet.getByRole("list", { name: "This recipe's tags" })).toHaveCount(0);
-  await suggestions.getByRole("button", { name: "Add suggested tag effort/quick" }).click();
-  await expect(sheet.getByRole("list", { name: "This recipe's tags" })).toContainText("quick");
+  await suggestions.getByRole("button", { name: "Add suggested tag time/under-30-min" }).click();
+  await expect(sheet.getByRole("list", { name: "This recipe's tags" })).toContainText("under-30-min");
   await suggestions.getByRole("button", { name: "Add all" }).click();
   await expect(suggestions).toHaveCount(0);
 

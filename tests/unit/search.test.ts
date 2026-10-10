@@ -103,3 +103,22 @@ describe("search", () => {
     expect(filterRecipes(all, { query: "  ", tags: [] })).toEqual(all);
   });
 });
+
+describe("method, time, and effort tags", () => {
+  it("turns minutes into a time tag", async () => {
+    const { timeTag } = await import("@/lib/search/tags");
+    expect(timeTag(25)).toBe("time/under-30-min");
+    expect(timeTag(30)).toBe("time/under-30-min");
+    expect(timeTag(45)).toBe("time/30-60-min");
+    expect(timeTag(90)).toBe("time/over-an-hour");
+  });
+
+  it("offers method and time groups, and moves slow-cooker out of effort", async () => {
+    const { SUGGESTED_TAGS, methodLabel } = await import("@/lib/search/tags");
+    const group = (g: string) => SUGGESTED_TAGS.find((x) => x.group === g)?.tags ?? [];
+    expect(group("method")).toContain("air-fryer");
+    expect(group("time")).toEqual(["under-30-min", "30-60-min", "over-an-hour"]);
+    expect(group("effort")).toEqual(["easy", "medium", "involved", "make-ahead", "freezer-friendly"]);
+    expect(methodLabel("air-fryer")).toBe("air fryer");
+  });
+});

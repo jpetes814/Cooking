@@ -87,4 +87,10 @@ describe("ideas for tonight", () => {
     expect(ideaPages(40)).toBe(4);
     expect(titles(pickIdeas(list.slice(0, 2), ctx, 3))).toEqual(["R0", "R1"]);
   });
+
+  it("counts grill and no-cook method tags as fresh on a hot day", () => {
+    const hot = { ...ctx, weather: "fresh" as const };
+    expect(scoreRecipe(recipe("Skewers", { tags: ["method/grill"] }), hot, new Map()).reasons).toEqual(["fresh for a hot day"]);
+    expect(scoreRecipe(recipe("Gazpacho bowls", { tags: ["method/no-cook"] }), hot, new Map()).score).toBe(1.5);
+  });
 });

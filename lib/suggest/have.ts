@@ -1,5 +1,6 @@
 import type { RecipeDoc } from "@/lib/model/recipe";
 import { normalize } from "@/lib/search/recipes";
+import { fitsTime, isEasy, usesMethod, type Method, type TimeLimit } from "@/lib/search/tags";
 
 /**
  * "What can I make?": which of your recipes use the things you have. Matches
@@ -11,7 +12,28 @@ import { normalize } from "@/lib/search/recipes";
 export const MAX_HAVE = 20;
 export const MAX_HAVE_LENGTH = 40;
 
-export type Matchable = Pick<RecipeDoc, "title" | "ingredients" | "rating" | "updatedAt">;
+export type Matchable = Pick<RecipeDoc, "title" | "ingredients" | "tags" | "rating" | "updatedAt">;
+
+/** Optional narrowing: how you want to cook it, how long you have, and whether it should be easy. */
+export interface HaveFilters {
+  method: Method | null;
+  time: TimeLimit | null;
+  easy: boolean;
+}
+
+export const NO_FILTERS: HaveFilters = { method: null, time: null, easy: false };
+
+export function filtersOn(f: HaveFilters): boolean {
+  return f.method !== null || f.time !== null || f.easy;
+}
+
+/** Recipes tagged to fit the filters. Untagged recipes drop out while a filter is on. */
+export function fitsFilters(tags: readonly string[], f: HaveFilters): boolean {
+  if (f.method && !usesMethod(tags, f.method)) return false;
+  if (f.time && !fitsTime(tags, f.time)) return false;
+  if (f.easy && !isEasy(tags)) return false;
+  return true;
+}
 
 export interface HaveMatch<T> {
   recipe: T;
@@ -57,8 +79,14 @@ export function matchRecipe<T extends Matchable>(recipe: T, have: readonly strin
 }
 
 /** Recipes that use the most of what you have first, then the ones you're closest to making. */
-export function whatCanIMake<T extends Matchable>(recipes: readonly T[], have: readonly string[], staples: readonly string[] = []): HaveMatch<T>[] {
+export function whatCanIMake<T extends Matchable>(
+  recipes: readonly T[],
+  have: readonly string[],
+  staples: readonly string[] = [],
+  filters: HaveFilters = NO_FILTERS
+): HaveMatch<T>[] {
   return recipes
+    .filter((r) => fitsFilters(r.tags, filters))
     .map((r) => matchRecipe(r, have, staples))
     .filter((m): m is HaveMatch<T> => m !== null)
     .sort(
