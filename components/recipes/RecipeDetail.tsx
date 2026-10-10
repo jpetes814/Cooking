@@ -8,6 +8,28 @@ import PhotoViewer from "./PhotoViewer";
 import { TagLabel } from "./TagPicker";
 import CookedPanel from "./CookedPanel";
 import NextTimeNotes from "./NextTimeNotes";
+import Stepper from "@/components/ui/Stepper";
+import { canStep, defaultTarget, scaledIngredients, stepTarget, targetLabel } from "@/lib/model/scale";
+
+const servesKey = (id: string) => `recipe-box:serves:${id}`;
+
+function readServes(id: string): number | null {
+  try {
+    const n = Number(localStorage.getItem(servesKey(id)));
+    return Number.isFinite(n) && n > 0 ? n : null;
+  } catch {
+    return null;
+  }
+}
+
+function saveServes(id: string, n: number | null) {
+  try {
+    if (n === null) localStorage.removeItem(servesKey(id));
+    else localStorage.setItem(servesKey(id), String(n));
+  } catch {
+    // Not remembered this time; no harm.
+  }
+}
 
 /** One recipe, readable while cooking. */
 export default function RecipeDetail({
@@ -36,6 +58,18 @@ export default function RecipeDetail({
 }) {
   const [confirming, setConfirming] = useState(false);
   const [editingNote, setEditingNote] = useState(false);
+  // How much you're making this time. Only changes what you see; the recipe stays as saved.
+  const [serves, setServes] = useState<number | null>(() => readServes(recipe.id));
+  const base = recipe.servings;
+  const target = serves ?? defaultTarget(base);
+  const scaled = target !== defaultTarget(base);
+  const ingredients = scaled ? scaledIngredients(recipe, target) : recipe.ingredients;
+  const changeServes = (dir: 1 | -1) => {
+    const next = stepTarget(target, dir, base);
+    const keep = next === defaultTarget(base) ? null : next;
+    setServes(keep);
+    saveServes(recipe.id, keep);
+  };
   const [viewing, setViewing] = useState<string | null>(null);
   const photos = sortedPhotos(recipe.photos);
   const viewed = photos.find((p) => p.id === viewing) ?? null;
@@ -130,9 +164,36 @@ export default function RecipeDetail({
 
       {recipe.ingredients.length > 0 && (
         <section>
-          <h3 className="text-lg font-semibold">Ingredients</h3>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h3 className="text-lg font-semibold">Ingredients</h3>
+            <Stepper
+              value={targetLabel(target, base)}
+              label="How much to make"
+              onStep={changeServes}
+              canDown={canStep(target, -1, base)}
+              canUp={canStep(target, 1, base)}
+            />
+          </div>
+          {scaled && (
+            <p className="mt-1 flex items-center justify-between gap-2 text-xs text-muted" data-testid="scaled-note">
+              <span>
+                Scaled from {base ? `${formatQty(base)} servings` : "the recipe as written"}. Times and pan sizes in the steps aren&apos;t
+                changed.
+              </span>
+              <button
+                type="button"
+                onClick={() => {
+                  setServes(null);
+                  saveServes(recipe.id, null);
+                }}
+                className="min-h-11 shrink-0 px-2 font-medium text-accent"
+              >
+                Reset
+              </button>
+            </p>
+          )}
           <ul className="mt-2 divide-y divide-border rounded-2xl border border-border bg-surface">
-            {recipe.ingredients.map((ing, i) => (
+            {ingredients.map((ing, i) => (
               <li key={i} className="px-4 py-3 text-base">
                 {ing.qty !== null ? (
                   <>

@@ -2,9 +2,11 @@
 
 import { useMemo, useState } from "react";
 import { inputClass } from "@/components/ui/fields";
-import { addExtra, deleteTrip, removeExtra, setChecked, setTripRecipes, uncheckAll } from "@/lib/data/trips";
+import Stepper from "@/components/ui/Stepper";
+import { addExtra, deleteTrip, removeExtra, setChecked, setTripRecipes, setTripServings, uncheckAll } from "@/lib/data/trips";
+import { canStep, stepTarget, targetLabel } from "@/lib/model/scale";
 import type { Recipe } from "@/lib/model/recipe";
-import { progress, tidyExtra, type Trip } from "@/lib/model/trip";
+import { progress, tidyExtra, tripRecipes, type Trip } from "@/lib/model/trip";
 import { shoppingList, type ShopItem } from "@/lib/shop/merge";
 import RecipePicker from "./RecipePicker";
 
@@ -25,7 +27,7 @@ export default function TripView({
   const [picking, setPicking] = useState(false);
   const [draft, setDraft] = useState("");
   const [confirming, setConfirming] = useState(false);
-  const forTrip = useMemo(() => trip.recipeIds.map((id) => recipes.find((r) => r.id === id)).filter((r): r is Recipe => !!r), [trip.recipeIds, recipes]);
+  const forTrip = useMemo(() => tripRecipes(trip, recipes), [trip, recipes]);
   const list = useMemo(() => shoppingList(forTrip, trip.extras, staples), [forTrip, trip.extras, staples]);
   const all = list.aisles.flatMap((a) => a.items);
   const { done, left } = progress(
@@ -102,9 +104,20 @@ export default function TripView({
           {trip.pending && <span className="text-warn"> · waiting to sync</span>}
         </p>
         {forTrip.length > 0 && (
-          <p className="mt-2 text-sm">
-            For <span className="font-medium">{forTrip.map((r) => r.title).join(", ")}</span>
-          </p>
+          <ul aria-label="Recipes on this trip" className="mt-3 divide-y divide-border rounded-2xl border border-border bg-surface">
+            {forTrip.map((r) => (
+              <li key={r.id} className="flex items-center justify-between gap-2 py-1 pl-3 pr-1">
+                <span className="min-w-0 truncate text-sm font-medium">{r.title}</span>
+                <Stepper
+                  value={targetLabel(r.target, r.servings)}
+                  label={`How much ${r.title} to shop for`}
+                  onStep={(dir) => setTripServings(uid, trip.id, r.id, stepTarget(r.target, dir, r.servings))}
+                  canDown={canStep(r.target, -1, r.servings)}
+                  canUp={canStep(r.target, 1, r.servings)}
+                />
+              </li>
+            ))}
+          </ul>
         )}
         {empty.length > 0 && (
           <p className="mt-1 text-xs text-warn">
@@ -187,7 +200,12 @@ export default function TripView({
           doneLabel={(n) => (n ? `Shop for ${n} recipe${n === 1 ? "" : "s"}` : "Shop for no recipes")}
           onClose={() => setPicking(false)}
           onDone={(ids) => {
-            setTripRecipes(uid, trip.id, ids);
+            setTripRecipes(
+              uid,
+              trip.id,
+              ids,
+              trip.recipeIds.filter((id) => !ids.includes(id))
+            );
             setPicking(false);
           }}
         />

@@ -72,6 +72,14 @@ test("plans a trip, adds up ingredients by aisle, and checks things off offline"
   await trip.click();
   await page.getByRole("button", { name: "Uncheck all" }).click();
   await expect(page.getByTestId("trip-progress")).toHaveText("4 to get · 0 in the cart");
+
+  // Shopping for a bigger batch: the recipe has no servings set, so it steps by multiples.
+  const howMuch = page.getByRole("group", { name: "How much Lemon pasta to shop for" });
+  await expect(howMuch.getByTestId("stepper-value")).toHaveText("1×");
+  await howMuch.getByRole("button", { name: "More" }).click();
+  await expect(howMuch.getByTestId("stepper-value")).toHaveText("1½×");
+  await expect(produce.getByRole("checkbox", { name: "lemons" })).toContainText("3 lemons");
+  await expect(produce.getByRole("checkbox", { name: "garlic" })).toContainText("4 1/2 cloves garlic");
   await page.getByRole("button", { name: "Delete trip" }).click();
   await page.getByRole("button", { name: "Yes, delete" }).click();
   await expect(page.getByRole("list", { name: "Your trips" })).toHaveCount(0);

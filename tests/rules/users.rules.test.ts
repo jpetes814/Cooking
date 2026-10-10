@@ -179,6 +179,7 @@ describe("shopping trips", () => {
     await assertSucceeds(updateDoc(ref, new FieldPath("checked", "red onion"), true, "updatedAt", 2));
     await assertSucceeds(updateDoc(ref, new FieldPath("checked", "red onion"), deleteField(), "updatedAt", 3));
     await assertSucceeds(updateDoc(ref, { extras: ["paper towels"], recipeIds: [], updatedAt: 4 }));
+    await assertSucceeds(updateDoc(ref, new FieldPath("servings", "r1"), 6, "updatedAt", 5));
     await assertSucceeds(deleteDoc(ref));
   });
 
@@ -198,6 +199,8 @@ describe("shopping trips", () => {
     await assertFails(setDoc(at("d"), trip({ checked: ["onion"] })));
     await assertFails(setDoc(at("e"), trip({ extras: Array.from({ length: 101 }, (_, i) => `x${i}`) })));
     await assertFails(setDoc(at("f"), trip({ createdAt: "today" })));
+    await assertFails(setDoc(at("h"), trip({ servings: [4] })));
+    await assertSucceeds(setDoc(at("i"), trip({ servings: { r1: 2 } })));
     await assertSucceeds(setDoc(at("g"), trip()));
     await assertFails(updateDoc(at("g"), { createdAt: 99, updatedAt: 2 }));
   });

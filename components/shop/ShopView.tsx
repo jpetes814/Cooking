@@ -4,7 +4,7 @@ import { useState } from "react";
 import { TextInput } from "@/components/ui/fields";
 import { createTrip } from "@/lib/data/trips";
 import type { Recipe } from "@/lib/model/recipe";
-import { defaultTripName, newTrip, progress, type Trip } from "@/lib/model/trip";
+import { defaultTripName, newTrip, progress, tripRecipes, type Trip } from "@/lib/model/trip";
 import { shoppingList } from "@/lib/shop/merge";
 import { useNow } from "@/components/shell/useNow";
 import RecipePicker from "./RecipePicker";
@@ -46,7 +46,7 @@ export default function ShopView({ uid, trips, recipes, staples }: { uid: string
       ) : (
         <ul className="space-y-2" aria-label="Your trips">
           {trips.map((t) => {
-            const forTrip = recipes.filter((r) => t.recipeIds.includes(r.id));
+            const forTrip = tripRecipes(t, recipes);
             const keys = shoppingList(forTrip, t.extras, staples).aisles.flatMap((a) => a.items.map((i) => i.key));
             const { left } = progress(keys, t.checked);
             return (

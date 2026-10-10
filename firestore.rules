@@ -64,6 +64,7 @@ service cloud.firestore {
         && t.checked.size() <= 600
         && t.extras is list
         && t.extras.size() <= 100
+        && (!('servings' in t) || (t.servings is map && t.servings.size() <= 50))
         && t.createdAt is number
         && t.updatedAt is number;
     }

@@ -1,3 +1,5 @@
+import { defaultTarget, scaleFactor } from "./scale";
+
 /**
  * A shopping trip: which recipes it's for, what's been checked off, and any
  * extra items typed in. The list itself is worked out on the phone from the
@@ -16,11 +18,27 @@ export interface TripDoc {
   /** Item keys that are in the cart. A map, so two phones checking things off merge cleanly. */
   checked: Record<string, true>;
   extras: string[];
+  /** Per recipe: servings to shop for, or a multiplier when it doesn't say. Missing means as written. */
+  servings?: Record<string, number>;
   createdAt: number;
   updatedAt: number;
 }
 
 export type Trip = TripDoc & { id: string; pending: boolean };
+
+/** The trip's recipes with how much to make of each, ready for the shopping list. */
+export function tripRecipes<R extends { id: string; servings: number | null }>(
+  trip: Pick<TripDoc, "recipeIds" | "servings">,
+  recipes: readonly R[]
+): (R & { factor: number; target: number })[] {
+  return trip.recipeIds
+    .map((id) => recipes.find((r) => r.id === id))
+    .filter((r): r is R => r !== undefined)
+    .map((r) => {
+      const target = trip.servings?.[r.id] ?? defaultTarget(r.servings);
+      return { ...r, target, factor: scaleFactor(r.servings, target) };
+    });
+}
 
 /** "Trip for Sat, Oct 10" */
 export function defaultTripName(now: number): string {

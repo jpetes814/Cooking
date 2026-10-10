@@ -47,8 +47,19 @@ export function createTrip(uid: string, trip: TripDoc): string {
   return r.id;
 }
 
-export function setTripRecipes(uid: string, id: string, recipeIds: string[]) {
-  updateDoc(ref(uid, id), { recipeIds, updatedAt: Date.now() }).catch(reportFailure("changing the trip's recipes"));
+/** Changes which recipes the trip is for, forgetting the servings of any that were dropped. */
+export function setTripRecipes(uid: string, id: string, recipeIds: string[], dropped: string[] = []) {
+  const forget = dropped.flatMap((r) => [new FieldPath("servings", r), deleteField()]);
+  updateDoc(ref(uid, id), "recipeIds", recipeIds, "updatedAt", Date.now(), ...forget).catch(
+    reportFailure("changing the trip's recipes")
+  );
+}
+
+/** How much of one recipe to shop for. One field each, so two phones never undo each other. */
+export function setTripServings(uid: string, id: string, recipeId: string, target: number) {
+  updateDoc(ref(uid, id), new FieldPath("servings", recipeId), target, "updatedAt", Date.now()).catch(
+    reportFailure("changing the servings")
+  );
 }
 
 export function renameTrip(uid: string, id: string, name: string) {

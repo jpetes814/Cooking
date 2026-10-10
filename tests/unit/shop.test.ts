@@ -95,4 +95,28 @@ describe("the trip's list", () => {
     const both = shoppingList([pasta, chicken], [], []).aisles.flatMap((a) => a.items).find((i) => i.name === "garlic");
     expect(one?.key).toBe(both?.key);
   });
+
+  it("scales each recipe by how much you're making", () => {
+    const all = shoppingList([{ ...pasta, factor: 2 }, chicken], [], []).aisles.flatMap((a) => a.items);
+    expect(all.find((i) => i.name === "garlic")?.amount).toBe("8 cloves");
+    expect(all.find((i) => i.name === "spaghetti")?.amount).toBe("400 g");
+    expect(all.find((i) => i.name === "salt")?.amount).toBe("");
+  });
+});
+
+describe("trip recipes", () => {
+  it("knows how much of each recipe to shop for", async () => {
+    const { tripRecipes } = await import("@/lib/model/trip");
+    const recipes = [
+      { id: "a", servings: 4 },
+      { id: "b", servings: null },
+      { id: "c", servings: 2 },
+    ];
+    const out = tripRecipes({ recipeIds: ["a", "b", "gone"], servings: { a: 6, b: 2 } }, recipes);
+    expect(out.map((r) => [r.id, r.target, r.factor])).toEqual([
+      ["a", 6, 1.5],
+      ["b", 2, 2],
+    ]);
+    expect(tripRecipes({ recipeIds: ["c"] }, recipes)[0]).toMatchObject({ target: 2, factor: 1 });
+  });
 });

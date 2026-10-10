@@ -160,7 +160,11 @@ export function aisleFor(name: string, unit: string | null = null): Aisle {
 
 // ---------- The list ----------
 
-export type Shoppable = Pick<RecipeDoc, "title" | "ingredients"> & { id: string };
+export type Shoppable = Pick<RecipeDoc, "title" | "ingredients"> & {
+  id: string;
+  /** Make more or less: 2 doubles every amount. */
+  factor?: number;
+};
 
 export function shoppingList(recipes: readonly Shoppable[], extras: readonly string[], staples: readonly string[]): ShopList {
   const byKey = new Map<string, { name: string; parts: Ingredient[]; recipes: string[]; unit: string | null }>();
@@ -170,7 +174,7 @@ export function shoppingList(recipes: readonly Shoppable[], extras: readonly str
       const key = itemKey(label);
       if (!key) continue;
       const entry = byKey.get(key) ?? { name: cleanName(label), parts: [], recipes: [], unit: ing.unit };
-      entry.parts.push(ing);
+      entry.parts.push(r.factor && r.factor !== 1 && ing.qty !== null ? { ...ing, qty: ing.qty * r.factor } : ing);
       if (!entry.recipes.includes(r.title)) entry.recipes.push(r.title);
       byKey.set(key, entry);
     }
