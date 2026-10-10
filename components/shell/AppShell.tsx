@@ -58,7 +58,12 @@ function SignedIn({ uid, email }: { uid: string; email: string }) {
             <h1 className="truncate text-xl font-bold tracking-tight">Recipe Box</h1>
             <StatusLine />
           </div>
-          <AccountMenu email={email} />
+          <AccountMenu
+            email={email}
+            uid={uid}
+            recipes={recipes.status === "ready" ? recipes.recipes : null}
+            staples={pantry.status === "ready" ? pantry.items : []}
+          />
         </div>
       </header>
 
