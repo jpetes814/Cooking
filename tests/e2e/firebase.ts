@@ -10,6 +10,8 @@ export const PASSWORD = "test-password-123";
 export const TESTER = "tester@example.com";
 /** On the allowlist with a box of their own, for tests that need a known set of recipes. */
 export const COOK = "cook@example.com";
+/** On the allowlist, used by the backup test as the app a backup is copied into. */
+export const COPIER = "copier@example.com";
 /** On the allowlist, used by the shopping tests. */
 export const SHOPPER = "shopper@example.com";
 /** Has an account, but isn't on the allowlist. */

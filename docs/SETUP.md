@@ -92,3 +92,13 @@ The free daily allowance is far more than one person will use.
 5. Tap **Done**. Now **Share > Recipe Box** on a post opens a new recipe and fills it in.
 
 The Shortcut opens Recipe Box in Safari rather than the home-screen app, so sign in there once. Your recipes are the same in both.
+
+## 8. Copy recipes from the test app to the real one
+
+Every copy of the app has its own recipes (section 3 keeps test and real apart). To move them across:
+
+1. In the **test** app (a preview link), tap your initial at the top right, then **Backup and copy > Download backup**. On iPhone, pick **Save to Files**.
+2. In the **real** app, open the same menu, tap **Choose a backup file**, and pick that file.
+3. Check the count it shows, then tap **Import**. Recipes you already have are skipped, so running it twice is safe.
+
+Photos don't come along yet, only the text, tags, ratings, cooked dates, and notes. The same download works as a backup to keep somewhere safe.
