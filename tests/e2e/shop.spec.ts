@@ -84,3 +84,30 @@ test("plans a trip, adds up ingredients by aisle, and checks things off offline"
   await page.getByRole("button", { name: "Yes, delete" }).click();
   await expect(page.getByRole("list", { name: "Your trips" })).toHaveCount(0);
 });
+
+test("suggests other recipes that use what you're already buying", async ({ page }) => {
+  await signIn(page, SHOPPER);
+  // Lemon pasta and Lemon chicken are saved by the test above.
+  await addRecipe(page, "Lemon honey dressing", "1 lemon\n2 tbsp honey");
+  await addRecipe(page, "Plain toast", "2 slices bread");
+
+  await page.getByRole("button", { name: "Shop" }).click();
+  await page.getByRole("button", { name: "+ New trip" }).click();
+  const picker = page.getByRole("dialog", { name: "New trip" });
+  await picker.getByRole("checkbox", { name: /Lemon pasta/ }).click();
+  await picker.getByRole("button", { name: "Make a list for 1 recipe" }).click();
+
+  const ideas = page.getByRole("region", { name: "Use it up" });
+  const items = ideas.getByRole("listitem");
+  // Lemon chicken shares the lemons, garlic, and olive oil, so it comes first; toast shares nothing.
+  await expect(items.first()).toContainText("Lemon chicken");
+  await expect(items.first()).toContainText("uses lemon, garlic, olive oil");
+  await expect(items.first()).toContainText("adds 1: chicken thighs");
+  await expect(ideas).toContainText("Lemon honey dressing");
+  await expect(ideas).not.toContainText("Plain toast");
+
+  await ideas.getByRole("button", { name: "Add Lemon chicken to this trip" }).click();
+  await expect(page.getByRole("list", { name: "Recipes on this trip" })).toContainText("Lemon chicken");
+  await expect(page.getByRole("region", { name: "Produce" }).getByRole("checkbox", { name: "lemons" })).toContainText("3 lemons");
+  await expect(ideas).not.toContainText("Lemon chicken");
+});
