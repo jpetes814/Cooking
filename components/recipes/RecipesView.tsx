@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { createRecipe, deleteRecipe, logCooked, rateRecipe, saveNextTime, unlogCooked, updateRecipe } from "@/lib/data/recipes";
 import { daysAgo, isFavorite, lastCooked, SORT_LABEL, sortBy, type SortMode } from "@/lib/model/cooking";
 import { useNow } from "@/components/shell/useNow";
@@ -10,19 +10,55 @@ import { applyPhotoEdits, coverPhoto, photoPath, sortedPhotos } from "@/lib/mode
 import IdeasCard from "./IdeasCard";
 import WhatCanIMake from "./WhatCanIMake";
 import RecipeDetail from "./RecipeDetail";
+import { linkInText, sharedLink, withoutShare } from "@/lib/import/share";
 import RecipeEditor, { type PhotoEdits } from "./RecipeEditor";
 import RecipePhoto from "./RecipePhoto";
 import { TagLabel } from "./TagPicker";
 import { filterRecipes } from "@/lib/search/recipes";
 import { currentSeason, tagCounts, tagLeaf } from "@/lib/search/tags";
 
-type Editing = { mode: "new"; start?: { title: string; url: string } } | { mode: "edit"; recipe: Recipe } | null;
+type Editing =
+  | { mode: "new"; start?: { title: string; url: string }; autoFill?: boolean }
+  | { mode: "edit"; recipe: Recipe }
+  | null;
+
+/** A link sent to the app in its address (an iPhone Shortcut or a share menu). */
+function readSharedLink(): string | null {
+  return typeof window === "undefined" ? null : sharedLink(window.location.search);
+}
 
 /** The Recipes tab: your list, one recipe at a time, and the editor. */
 export default function RecipesView({ uid, recipes, staples }: { uid: string; recipes: Recipe[]; staples: string[] }) {
   const [openId, setOpenId] = useState<string | null>(null);
   const [making, setMaking] = useState(false);
-  const [editing, setEditing] = useState<Editing>(null);
+  const [editing, setEditing] = useState<Editing>(() => {
+    const link = readSharedLink();
+    return link ? { mode: "new", start: { title: "", url: link }, autoFill: true } : null;
+  });
+  const [pasteNote, setPasteNote] = useState<string | null>(null);
+  // Once read, clear it from the address so a reload doesn't start it again.
+  useEffect(() => {
+    if (readSharedLink()) window.history.replaceState(null, "", withoutShare(window.location.href));
+  }, []);
+
+  /** Reads a copied link and starts a recipe from it. iPhone asks once to allow pasting. */
+  async function pasteLink() {
+    setPasteNote(null);
+    let text = "";
+    try {
+      text = await navigator.clipboard.readText();
+    } catch {
+      setPasteNote("Couldn't read what you copied. Tap + Add recipe and paste the link into Link instead.");
+      return;
+    }
+    const link = linkInText(text);
+    if (!link) {
+      setPasteNote("Copy a link first: in Instagram or TikTok, tap Share, then Copy link.");
+      return;
+    }
+    setOpenId(null);
+    setEditing({ mode: "new", start: { title: "", url: link }, autoFill: true });
+  }
   const [query, setQuery] = useState("");
   const [picked, setPicked] = useState<string[]>([]);
   const open = recipes.find((r) => r.id === openId) ?? null;
@@ -74,6 +110,7 @@ export default function RecipesView({ uid, recipes, staples }: { uid: string; re
       uid={uid}
       existing={editing.mode === "edit" ? editing.recipe : undefined}
       start={editing.mode === "new" ? editing.start : undefined}
+      autoFill={editing.mode === "new" && editing.autoFill}
       usedTags={usedTags}
       onClose={() => setEditing(null)}
       onSave={save}
@@ -112,24 +149,39 @@ export default function RecipesView({ uid, recipes, staples }: { uid: string; re
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between gap-3">
-        <h2 className="text-lg font-semibold">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h2 className="whitespace-nowrap text-lg font-semibold">
           Your recipes{recipes.length > 0 && <span className="font-normal text-muted"> · {recipes.length}</span>}
         </h2>
-        <button
-          type="button"
-          onClick={() => setEditing({ mode: "new" })}
-          className="min-h-11 shrink-0 rounded-xl bg-accent px-4 font-semibold text-on-accent"
-        >
-          + Add recipe
-        </button>
+        <div className="ml-auto flex shrink-0 gap-2">
+          <button
+            type="button"
+            onClick={pasteLink}
+            className="min-h-11 rounded-xl border border-accent bg-accent-soft px-3 font-semibold text-accent"
+          >
+            Paste link
+          </button>
+          <button
+            type="button"
+            onClick={() => setEditing({ mode: "new" })}
+            className="min-h-11 rounded-xl bg-accent px-4 font-semibold text-on-accent"
+          >
+            + Add recipe
+          </button>
+        </div>
       </div>
+      {pasteNote && (
+        <p role="status" className="text-sm text-warn">
+          {pasteNote}
+        </p>
+      )}
 
       {recipes.length === 0 && makeButton}
       {recipes.length === 0 ? (
         <p className="rounded-2xl border border-dashed border-border p-6 text-center text-sm leading-relaxed text-muted">
-          No recipes yet. Tap <span className="font-medium text-text">Add recipe</span> to type one in, paste a TikTok,
-          Instagram, or YouTube link, or add a photo of a cookbook page.
+          No recipes yet. Copy a TikTok, Instagram, or YouTube link and tap{" "}
+          <span className="font-medium text-text">Paste link</span>, or tap <span className="font-medium text-text">Add recipe</span> to type
+          one in or add a photo of a cookbook page.
         </p>
       ) : (
         <>
@@ -176,7 +228,9 @@ export default function RecipesView({ uid, recipes, staples }: { uid: string; re
             </div>
             <div className="flex items-center justify-between gap-2 text-sm text-muted">
               <span>
-                {filtering ? `${shown.length} of ${recipes.length} recipes` : `${recipes.length} recipes`}
+                {filtering
+                  ? `${shown.length} of ${recipes.length} recipes`
+                  : `${recipes.length} recipe${recipes.length === 1 ? "" : "s"}`}
                 {filtering && (
                   <button
                     type="button"

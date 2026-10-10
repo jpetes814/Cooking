@@ -76,3 +76,19 @@ Needed from the sign-in step on. Make **two** projects, so test previews never t
 3. Add it to Vercel as `YOUTUBE_API_KEY` for Production and Preview, then redeploy.
 
 The free daily allowance is far more than one person will use.
+
+## 7. Optional: send posts to Recipe Box
+
+**The quick way, any phone:** in Instagram or TikTok, tap **Share > Copy link**, open Recipe Box, and tap **Paste link**. A new recipe opens with the link in and starts filling itself in. You still check it over before it saves. iPhone asks once whether to allow pasting.
+
+**Android:** once the app is installed (section 5), **Recipe Box** shows up in the share menu. Share a post to it and the same thing happens.
+
+**iPhone share menu (a Shortcut):** iPhone doesn't let home-screen apps into the share menu, but a Shortcut can stand in.
+
+1. Open the **Shortcuts** app, tap **+**, and name the shortcut **Recipe Box**.
+2. Tap the **i** (or the settings icon) and turn on **Show in Share Sheet**. Under share sheet types, keep **URLs** and **Text**.
+3. Add the action **URL Encode** and set it to encode the **Shortcut Input**.
+4. Add the action **Open URLs** with `https://YOUR-APP.vercel.app/?add=` followed by the **URL Encoded Text** variable. Use your production address from section 4.
+5. Tap **Done**. Now **Share > Recipe Box** on a post opens a new recipe and fills it in.
+
+The Shortcut opens Recipe Box in Safari rather than the home-screen app, so sign in there once. Your recipes are the same in both.
