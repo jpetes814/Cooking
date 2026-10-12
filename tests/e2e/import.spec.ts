@@ -19,12 +19,31 @@ test("fills a recipe page exactly, then saves it", async ({ page }) => {
     "1 lb shelf-stable gnocchi\n1 pint cherry tomatoes\n2 Tbsp olive oil\n1/2 tsp salt"
   );
   await expect(sheet.getByLabel("Steps")).toHaveValue("Heat the oven to 425°F.\nToss everything on a sheet pan.\nRoast 20 minutes.");
+  // The page's picture of the dish comes along as a photo you can remove.
+  await expect(sheet.getByRole("button", { name: "View photo 1" })).toBeVisible();
+  await expect(sheet.getByText("Added the dish photo from the link.")).toBeVisible();
 
   await sheet.getByRole("button", { name: "Review recipe" }).click();
 
   await sheet.getByRole("button", { name: "Looks good, save" }).click();
   await expect(page.getByRole("heading", { name: "Sheet pan gnocchi" })).toBeVisible();
   await expect(page.getByText("1/2 tsp")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Open photo 1" })).toBeVisible();
+});
+
+test("the dish photo from a link is yours to remove", async ({ page }) => {
+  const sheet = await openEditorWithLink(page, "https://example.com/recipes/sheet-pan-gnocchi");
+  await sheet.getByRole("button", { name: "Fill from link" }).click();
+  await expect(sheet.getByRole("button", { name: "View photo 1" })).toBeVisible();
+  await sheet.getByRole("button", { name: "Remove photo 1" }).click();
+  await expect(sheet.getByRole("button", { name: "View photo 1" })).toHaveCount(0);
+  await expect(sheet.getByText("Added the dish photo from the link.")).toHaveCount(0);
+
+  // Pages without a picture add nothing.
+  await sheet.getByLabel("Link").fill("https://www.tiktok.com/@somecook/video/123");
+  await sheet.getByRole("button", { name: "Fill from link" }).click();
+  await expect(sheet.getByRole("status")).toContainText("Claude read it");
+  await expect(sheet.getByRole("button", { name: "View photo 1" })).toHaveCount(0);
 });
 
 test("Claude reads a TikTok caption into a draft, keeping what you typed", async ({ page }) => {

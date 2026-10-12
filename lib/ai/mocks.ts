@@ -31,6 +31,7 @@ const JSONLD_PAGE = `<!doctype html><html><head><title>Sheet pan gnocchi | A sam
     {
       "@type": "Recipe",
       name: "Sheet pan gnocchi",
+      image: ["/images/gnocchi.png"],
       recipeYield: ["4", "4 servings"],
       totalTime: "PT25M",
       recipeIngredient: ["1 lb shelf-stable gnocchi", "1 pint cherry tomatoes", "2 Tbsp olive oil", "1/2 tsp salt"],
@@ -46,14 +47,18 @@ const PLAIN_PAGE = `<!doctype html><html><head><title>Grandma's pasta</title></h
 <p>My favorite weeknight dinner. You need spaghetti, lemons, garlic, and olive oil.</p>
 <p>Boil the pasta, sizzle the garlic, toss with lemon. ${"Lots of words about the kitchen. ".repeat(10)}</p></body></html>`;
 
+/** A small orange picture standing in for a dish photo. */
+const DISH_PNG =
+  "iVBORw0KGgoAAAANSUhEUgAAADAAAAAkCAIAAABAJy5dAAAAk0lEQVR4nM3CAWYCAACF4Xecd8TMJJlkJpMkSTKTJEkySTrOf45d4/98YVDV8FbV8F7VMKxqGFU1jKsaPqoaJlUN06qGz6qGr6qGWVXDd1XDvKphUdWwrGpYVTWsqxo2VQ3bqoZdVcNPVcNvVcO+quFQ1XCsajhVNZyrGi5VDdeqhltVw19Vw72q4VHV8KxqeFX1HzeSNWbEOcOmAAAAAElFTkSuQmCC";
+
 /** Fake sites: example.com/recipes/* has JSON-LD, other example.com pages don't. */
 export const mockSources: Sources = {
   async page(url) {
     const u = new URL(url);
     if (u.hostname !== "example.com") return { ok: false, error: "Couldn't reach that site. Check the link, or try again in a moment." };
     if (u.pathname.startsWith("/recipes/")) {
-      const { recipeFromHtml } = await import("@/lib/import/html");
-      return { ok: true, recipe: recipeFromHtml(JSONLD_PAGE), text: "" };
+      const { recipeFromHtml, pageImage } = await import("@/lib/import/html");
+      return { ok: true, recipe: recipeFromHtml(JSONLD_PAGE), text: "", image: pageImage(JSONLD_PAGE, url) };
     }
     const { pageText } = await import("@/lib/import/html");
     return { ok: true, recipe: null, text: pageText(PLAIN_PAGE) };
@@ -68,6 +73,10 @@ export const mockSources: Sources = {
   },
   async youtube() {
     return { ok: true, title: "The easiest lemon garlic pasta", description: "You need spaghetti, lemons, garlic, olive oil." };
+  },
+  async image(url) {
+    if (new URL(url).hostname !== "example.com") return { ok: false, error: "Couldn't get that picture." };
+    return { ok: true, bytes: new Uint8Array(Buffer.from(DISH_PNG, "base64")), type: "image/png" };
   },
 };
 

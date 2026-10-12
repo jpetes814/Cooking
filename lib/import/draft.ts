@@ -12,6 +12,8 @@ export interface ImportDraft {
   notes: string;
   /** Tags Claude thinks fit. Offered in the editor, never added without a tap. */
   suggestedTags: string[];
+  /** A picture of the dish from the page or video, offered as a photo you can remove. */
+  imageUrl?: string | null;
 }
 
 /** Where a draft came from, so the editor can say how much to trust it. */

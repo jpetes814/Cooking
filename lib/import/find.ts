@@ -41,6 +41,8 @@ export interface FoundIdea {
   site: string;
   uses: string[];
   why: string;
+  /** The page's picture of the dish, when it has one. */
+  imageUrl?: string | null;
 }
 
 /** Same page either way: no #fragment, no trailing slash, host in lowercase. */

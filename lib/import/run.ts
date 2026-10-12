@@ -43,6 +43,11 @@ export function tidyExtracted(r: ExtractedRecipe): ImportDraft {
   };
 }
 
+/** Adds the page's or video's picture to a successful draft. */
+function withImage(result: ImportResult, image: string | null | undefined): ImportResult {
+  return result.ok && image ? { ...result, draft: { ...result.draft, imageUrl: image } } : result;
+}
+
 async function viaClaude(extract: Extract, kind: string, text: string, emptyMessage: string): Promise<ImportResult> {
   return draftFrom(await extract(kind, text), emptyMessage);
 }
@@ -64,29 +69,32 @@ export async function importRecipe(raw: string, deps: { sources: Sources; extrac
       const tt = await sources.tiktok(link.url);
       if (!tt.ok) return { ok: false, status: 502, error: tt.error };
       if (!tt.caption.trim()) return { ok: false, status: 422, error: NO_RECIPE_IN_CAPTION };
-      return viaClaude(extract, "TikTok video caption", tt.caption, NO_RECIPE_IN_CAPTION);
+      return withImage(await viaClaude(extract, "TikTok video caption", tt.caption, NO_RECIPE_IN_CAPTION), tt.image);
     }
 
     case "youtube": {
       const yt = await sources.youtube(link.url);
       if (!yt.ok) return { ok: false, status: 502, error: yt.error };
       const text = `Title: ${yt.title}\n\nDescription:\n${yt.description || "(none available)"}`;
-      return viaClaude(
-        extract,
-        "YouTube video title and description",
-        text,
-        "That video's description doesn't have the recipe in it. Type it in for now."
+      return withImage(
+        await viaClaude(
+          extract,
+          "YouTube video title and description",
+          text,
+          "That video's description doesn't have the recipe in it. Type it in for now."
+        ),
+        yt.image
       );
     }
 
     default: {
       const page = await sources.page(link.url);
       if (!page.ok) return { ok: false, status: 502, error: page.error };
-      if (page.recipe) return { ok: true, draft: page.recipe, via: "page" };
+      if (page.recipe) return withImage({ ok: true, draft: page.recipe, via: "page" }, page.image);
       if (page.text.length < 80) {
         return { ok: false, status: 422, error: "Couldn't find a recipe on that page." };
       }
-      return viaClaude(extract, "recipe web page text", page.text, "Couldn't find a recipe on that page.");
+      return withImage(await viaClaude(extract, "recipe web page text", page.text, "Couldn't find a recipe on that page."), page.image);
     }
   }
 }

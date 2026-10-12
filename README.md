@@ -25,6 +25,7 @@ Being built in small steps, each one a pull request you can test on your phone b
 15. Send to Recipe Box: paste or share a link and it fills in
 16. "Use it up": recipes that share what you're already buying
 17. Backup and copy between the test and real app (photos not included yet)
+18. Dish pictures: Fill from link adds the page's or video's photo, and web finds show one too
 
 ## Ideas for tonight and your location
 
