@@ -154,3 +154,42 @@ export function metaDescription(html: string): string {
     html.match(/<meta[^>]+name=["']description["'][^>]+content=["']([^"']*)["']/i);
   return m ? cleanText(m[1]) : "";
 }
+
+/** The first usable address in a schema.org image value: a string, a list, or {url}. */
+function imageValue(v: unknown): string | null {
+  if (typeof v === "string") return v;
+  if (Array.isArray(v)) {
+    for (const item of v) {
+      const hit = imageValue(item);
+      if (hit) return hit;
+    }
+    return null;
+  }
+  if (v && typeof v === "object") {
+    const o = v as Record<string, unknown>;
+    return imageValue(o.url ?? o.contentUrl ?? null);
+  }
+  return null;
+}
+
+function metaContent(html: string, key: string): string | null {
+  const a = new RegExp(`<meta[^>]+(?:property|name)=["']${key}["'][^>]+content=["']([^"']+)["']`, "i").exec(html);
+  const b = new RegExp(`<meta[^>]+content=["']([^"']+)["'][^>]+(?:property|name)=["']${key}["']`, "i").exec(html);
+  return (a ?? b)?.[1] ?? null;
+}
+
+/**
+ * The page's picture of the dish: the recipe's own image if it lists one,
+ * otherwise the preview image sites set for sharing. A full web address, or null.
+ */
+export function pageImage(html: string, pageUrl: string): string | null {
+  const node = findRecipeNode(jsonLdBlocks(html));
+  const raw = (node && imageValue(node.image)) ?? metaContent(html, "og:image") ?? metaContent(html, "twitter:image");
+  if (!raw) return null;
+  try {
+    const url = new URL(decodeEntities(raw.trim()), pageUrl);
+    return url.protocol === "https:" || url.protocol === "http:" ? url.toString() : null;
+  } catch {
+    return null;
+  }
+}

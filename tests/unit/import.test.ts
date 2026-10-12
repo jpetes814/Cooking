@@ -149,6 +149,7 @@ describe("importRecipe", () => {
     page: async () => ({ ok: true, recipe: page, text: "" }),
     tiktok: async () => ({ ok: true, caption: "garlic noodles: 2 cloves garlic...", author: "c" }),
     youtube: async () => ({ ok: true, title: "Garlic bread", description: "" }),
+    image: async () => ({ ok: false, error: "no" }),
     ...over,
   });
   const extract: Extract = async (kind, text) => {
@@ -224,5 +225,57 @@ describe("cook time from recipe pages", () => {
     expect(recipeFromHtml(page({ totalTime: "PT2H" }))?.suggestedTags).toEqual(["time/over-an-hour"]);
     expect(recipeFromHtml(page({ prepTime: "PT10M", cookTime: "PT35M" }))?.suggestedTags).toEqual(["time/30-60-min"]);
     expect(recipeFromHtml(page({}))?.suggestedTags).toEqual([]);
+  });
+});
+
+describe("dish pictures", () => {
+  const recipe = (image: unknown) => ld({ "@type": "Recipe", name: "Stew", image });
+
+  it("takes the recipe's own image in any schema.org form", async () => {
+    const { pageImage } = await import("@/lib/import/html");
+    expect(pageImage(recipe("https://cdn.example.com/stew.jpg"), "https://example.com/r")).toBe("https://cdn.example.com/stew.jpg");
+    expect(pageImage(recipe(["/img/a.jpg", "/img/b.jpg"]), "https://example.com/r/stew")).toBe("https://example.com/img/a.jpg");
+    expect(pageImage(recipe({ "@type": "ImageObject", url: "big.jpg" }), "https://example.com/r/stew")).toBe(
+      "https://example.com/r/big.jpg"
+    );
+  });
+
+  it("falls back to the page's sharing image", async () => {
+    const { pageImage } = await import("@/lib/import/html");
+    const og = `<meta property="og:image" content="https://example.com/og.jpg?a=1&amp;b=2">`;
+    expect(pageImage(og, "https://example.com/")).toBe("https://example.com/og.jpg?a=1&b=2");
+    const tw = `<meta content="/tw.png" name="twitter:image">`;
+    expect(pageImage(tw, "https://example.com/x")).toBe("https://example.com/tw.png");
+    expect(pageImage("<p>no pictures</p>", "https://example.com/")).toBeNull();
+  });
+
+  it("only gives web addresses", async () => {
+    const { pageImage } = await import("@/lib/import/html");
+    expect(pageImage(recipe("data:image/png;base64,AAAA"), "https://example.com/")).toBeNull();
+    expect(pageImage(recipe("javascript:alert(1)"), "https://example.com/")).toBeNull();
+  });
+
+  it("puts the picture on the draft, from pages and videos", async () => {
+    const page: ImportDraft = { title: "Toast", servings: 1, ingredients: ["bread"], steps: [], notes: "", suggestedTags: [] };
+    const extract: Extract = async (_k, text) => ({
+      ok: true,
+      data: mockExtract(text),
+      usage: { model: "m", inputTokens: 0, outputTokens: 0, cacheReadTokens: 0 },
+    });
+    const sources: Sources = {
+      page: async () => ({ ok: true, recipe: page, text: "", image: "https://example.com/toast.jpg" }),
+      tiktok: async () => ({ ok: true, caption: "garlic noodles", author: "c", image: "https://example.com/thumb.jpg" }),
+      youtube: async () => ({ ok: true, title: "Garlic bread", description: "", image: null }),
+      image: async () => ({ ok: false, error: "no" }),
+    };
+    expect(await importRecipe("https://example.com/toast", { sources, extract })).toMatchObject({
+      ok: true,
+      draft: { imageUrl: "https://example.com/toast.jpg" },
+    });
+    expect(await importRecipe("https://www.tiktok.com/@c/video/1", { sources, extract })).toMatchObject({
+      draft: { imageUrl: "https://example.com/thumb.jpg" },
+    });
+    const yt = await importRecipe("https://youtu.be/abcdefghijk", { sources, extract });
+    expect(yt.ok && yt.draft.imageUrl).toBeFalsy();
   });
 });

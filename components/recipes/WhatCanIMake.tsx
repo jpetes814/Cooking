@@ -11,6 +11,23 @@ import { filtersOn, missingText, NO_FILTERS, splitHave, whatCanIMake, type HaveF
 import { METHODS, methodLabel, type Method, type TimeLimit } from "@/lib/search/tags";
 
 const HAVE_KEY = "recipe-box:have";
+
+/** A found page's dish photo, straight from that site. Hides itself if the site won't share it. */
+function DishPicture({ src, title }: { src: string; title: string }) {
+  const [broken, setBroken] = useState(false);
+  if (broken) return null;
+  return (
+    // eslint-disable-next-line @next/next/no-img-element -- another site's picture, shown as is
+    <img
+      src={src}
+      alt={`${title} photo`}
+      loading="lazy"
+      referrerPolicy="no-referrer"
+      onError={() => setBroken(true)}
+      className="h-16 w-16 shrink-0 rounded-xl bg-surface-2 object-cover"
+    />
+  );
+}
 const FILTERS_KEY = "recipe-box:have-filters";
 
 function readFilters(): HaveFilters {
@@ -298,9 +315,14 @@ export default function WhatCanIMake({
               <ul aria-label="Found on the web" className="mt-3 space-y-2">
                 {web.ideas.map((idea) => (
                   <li key={idea.url} className="rounded-2xl border border-border bg-bg p-3">
-                    <p className="font-semibold">{idea.title}</p>
-                    <p className="text-xs text-muted">{idea.site}</p>
-                    {idea.uses.length > 0 && <p className="mt-1 text-xs text-ok">uses {idea.uses.join(", ")}</p>}
+                    <div className="flex gap-3">
+                      {idea.imageUrl && <DishPicture src={idea.imageUrl} title={idea.title} />}
+                      <div className="min-w-0 flex-1">
+                        <p className="font-semibold">{idea.title}</p>
+                        <p className="text-xs text-muted">{idea.site}</p>
+                        {idea.uses.length > 0 && <p className="mt-1 text-xs text-ok">uses {idea.uses.join(", ")}</p>}
+                      </div>
+                    </div>
                     {idea.why && <p className="mt-1 text-sm">{idea.why}</p>}
                     <div className="mt-2 flex gap-2">
                       <a

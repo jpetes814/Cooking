@@ -28,3 +28,23 @@ export async function callAi<T>(path: string, body: unknown): Promise<AiCall<T>>
     return { ok: false, error: "Lost the connection. Try again when you have signal." };
   }
 }
+
+/** A web picture fetched through our server (other sites block the phone from reading them). Null if it can't be had. */
+export async function fetchImageBlob(url: string): Promise<Blob | null> {
+  if (typeof navigator !== "undefined" && !navigator.onLine) return null;
+  const user = getFirebase()?.auth.currentUser;
+  if (!user) return null;
+  try {
+    const token = await user.getIdToken();
+    const res = await fetch("/api/image", {
+      method: "POST",
+      headers: { "content-type": "application/json", authorization: `Bearer ${token}` },
+      body: JSON.stringify({ url }),
+    });
+    if (!res.ok) return null;
+    const blob = await res.blob();
+    return blob.type.startsWith("image/") ? blob : null;
+  } catch {
+    return null;
+  }
+}

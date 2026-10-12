@@ -56,6 +56,12 @@ test("finds recipes that use what you have, counting pantry staples, offline too
 });
 
 test("finds new recipes on the web and saves one after checking it", async ({ page, context }) => {
+  // The found page's dish photo loads straight from its site.
+  const png = Buffer.from(
+    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVR4nGP4z8AAAAMBAQDJ/pLvAAAAAElFTkSuQmCC",
+    "base64"
+  );
+  await page.route("https://example.com/images/**", (route) => route.fulfill({ contentType: "image/png", body: png }));
   await signIn(page, COOK);
   await page.getByRole("button", { name: "What can I make?" }).click();
   const sheet = page.getByRole("dialog", { name: "What can I make?" });
@@ -74,6 +80,9 @@ test("finds new recipes on the web and saves one after checking it", async ({ pa
   await expect(found.first()).toContainText("Sheet pan gnocchi");
   await expect(found.first()).toContainText("example.com");
   await expect(found.first()).toContainText("uses gnocchi, tomatoes");
+  const photo = found.first().getByRole("img", { name: "Sheet pan gnocchi photo" });
+  await expect(photo).toHaveAttribute("src", "https://example.com/images/gnocchi.png");
+  await expect.poll(() => photo.evaluate((img: HTMLImageElement) => img.naturalWidth)).toBeGreaterThan(0);
   await expect(found.first().getByRole("link", { name: "Look ↗" })).toHaveAttribute("href", "https://example.com/recipes/sheet-pan-gnocchi");
 
   // Save starts a new recipe with the link; you fill and check it as usual.

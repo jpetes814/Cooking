@@ -4,7 +4,9 @@ import { useEffect, useRef, useState } from "react";
 import Sheet from "@/components/ui/Sheet";
 import { TextArea, TextInput } from "@/components/ui/fields";
 import { useOnline } from "@/components/shell/useOnline";
-import { callAi } from "@/lib/ai/client";
+import { callAi, fetchImageBlob } from "@/lib/ai/client";
+import { newPhotoId, photosEnabled } from "@/lib/data/photos";
+import { shrinkPhoto } from "@/lib/photos/shrink";
 import { hasContent, mergeDraft, type ImportDraft, type ImportVia } from "@/lib/import/draft";
 import { buildRecipe, parseLink, toInput, type Recipe, type RecipeDoc } from "@/lib/model/recipe";
 import { MAX_PHOTOS, sortedPhotos } from "@/lib/model/photos";
@@ -77,6 +79,8 @@ export default function RecipeEditor({
   const [claudeTags, setClaudeTags] = useState<string[]>([]);
   const [filledByClaude, setFilledByClaude] = useState(false);
   const [reviewing, setReviewing] = useState<RecipeDoc | null>(null);
+  // The photo taken from the page, so the note can go once it's removed.
+  const [dishPhotoId, setDishPhotoId] = useState<string | null>(null);
   const online = useOnline();
   const set = (key: keyof typeof form) => (v: string) => {
     setForm((f) => ({ ...f, [key]: v }));
@@ -119,6 +123,24 @@ export default function RecipeEditor({
       return;
     }
     applyDraft(res.data.draft, res.data.via, setFill);
+    if (res.data.draft.imageUrl && hasContent(res.data.draft)) void addDishPhoto(res.data.draft.imageUrl);
+  }
+
+  /**
+   * Adds the page's or video's picture of the dish, only when the recipe has
+   * no photos yet. It's an ordinary new photo: remove it and nothing is saved.
+   * Any failure just means no picture.
+   */
+  async function addDishPhoto(url: string) {
+    if (!photosEnabled() || kept.length + added.length > 0) return;
+    const blob = await fetchImageBlob(url);
+    if (!blob) return;
+    const shrunk = await shrinkPhoto(blob);
+    if (!shrunk.ok) return;
+    const id = newPhotoId();
+    // Photos picked while it loaded win; the note only shows if this one landed.
+    setAdded((a) => (a.length ? a : [{ id, blob: shrunk.blob }]));
+    setDishPhotoId(id);
   }
 
   // A link sent to the app fills itself in once, if there's signal.
@@ -238,8 +260,16 @@ export default function RecipeEditor({
           room={MAX_PHOTOS - kept.length - added.length}
           onAdd={(photos) => setAdded((a) => [...a, ...photos])}
           onRemoveExisting={(id) => setRemoved((r) => [...r, id])}
-          onRemoveAdded={(id) => setAdded((a) => a.filter((p) => p.id !== id))}
+          onRemoveAdded={(id) => {
+            setAdded((a) => a.filter((p) => p.id !== id));
+            if (id === dishPhotoId) setDishPhotoId(null);
+          }}
         />
+        {dishPhotoId && added.some((p) => p.id === dishPhotoId) && (
+          <p className="-mt-2 text-xs text-muted">
+            Added the dish photo from the link. Remove it if you don&apos;t want it.
+          </p>
+        )}
         {kept.length + added.length > 0 && (
           <div>
             <button
