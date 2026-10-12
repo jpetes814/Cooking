@@ -24,7 +24,7 @@ Being built in small steps, each one a pull request you can test on your phone b
 14. Shopping trips: one merged list for several recipes, and adjustable servings
 15. Send to Recipe Box: paste or share a link and it fills in
 16. "Use it up": recipes that share what you're already buying
-17. Backup and copy between the test and real app
+17. Backup and copy between the test and real app (photos not included yet)
 
 ## Ideas for tonight and your location
 
